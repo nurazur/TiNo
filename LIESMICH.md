@@ -1,10 +1,10 @@
 # TiNo
 "TIny NOde" : Batteriebetriebener Funksensor oder Funk-Aktor. 
 Ziel dieses Projekts ist die Entwicklung schnurloser Funk Sensoren, 
-    die ber Batterien versorgt werden und z.B. mit dem Raspberry Pi kommunizieren.
+    die über Batterien versorgt werden und z.B. mit dem Raspberry Pi kommunizieren.
     Die Entwicklung hat zum Ziel:
  
-- minimale Kosten (Stückkosten unter 5 EUR)
+- minimale Kosten (Stückkosten unter 5 EUR)
 - minimale Grösse (Streichholzschachtel)
 - minimaler Stromverbrauch
 - maximale Batterielebensdauer (5 Jahre oder mehr)
@@ -13,10 +13,10 @@ Ziel dieses Projekts ist die Entwicklung schnurloser Funk Sensoren,
 - Plug&Play Firmware
    
 Als Sensor kann man so ziemlich alles verwenden, ob Temperatur, Luftfeuchtigkeit, Luftdruck, Höhenmesser, Lichtintensität, UV Index, 
-Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, Feuchtigkeitsmesser usw also im Prinzip alle Arten von Sensoren. Voraussetzung ist dass der Sensor bis mindestens 2.2V Betriebsspannung spezifiziert ist. Sonst kann die Batterieladung nicht voll ausgenutzt werden. 
+Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, Feuchtigkeitsmesser usw also im Prinzip alle Arten von Sensoren. Voraussetzung ist dass der Sensor bis mindestens 2.2V Betriebsspannung spezifiziert ist. Sonst kann die Batterieladung nicht voll ausgenutzt werden. 
 
-Die Leiterplatten passen zu im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben. Die verwendeten Komponenten sind am Markt eingeführt, jederzeit erhältlich und
-dadurch kostengünstig zu beschaffen. 
+Die Leiterplatten passen zu im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben. Die verwendeten Komponenten sind am Markt eingeführt, jederzeit erhältlich und
+dadurch kostengünstig zu beschaffen. 
 
 # Features
 ## Allgemein
@@ -47,7 +47,7 @@ dadurch kostengünstig zu beschaffen.
 - Ruhestrom ca. 4uA mit internem RC Oszillator
 - 1 MHz Takt Sender erlaubt Betriebsspannung bis 1.8V
 - 8 MHz Takt Empfänger
-- I2C fr Sensoren
+- I2C für Sensoren
 - mindestens 4 weitere GPIO
     
 ## Sensoren
@@ -63,8 +63,8 @@ dadurch kostengünstig zu beschaffen.
 - Programmierung mit Arduino IDE
 - Konfiguration der Nodes über serielles Interface (FTDA Adapter)
 - Konfigurations- und Kalibrierdaten im EEPROM gespeichert.
-- EEPROM verschlüsselt
+- EEPROM verschlüsselt
 - Flashen
   - mit ISP Adapter oder 
-  - seriell mit FTDA Adapter ber Bootloader
+  - seriell mit FTDA Adapter über Bootloader
 - bis zu 4 externe Interrupts (z.B. 4 Tasten) konfigurierbar
