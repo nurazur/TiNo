@@ -21,8 +21,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Licence can be viewed at                               
-// http://www.fsf.org/licenses/gpl.txt                    
+// Licence can be viewed at
+// http://www.fsf.org/licenses/gpl.txt
 
 // Please maintain this license information along with authorship
 // and copyright notices in any redistribution of this code
