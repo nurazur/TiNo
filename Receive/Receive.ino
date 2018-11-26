@@ -28,8 +28,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-Licence can be viewed at                               
-http://www.fsf.org/licenses/gpl.txt                    
+Licence can be viewed at
+http://www.fsf.org/licenses/gpl.txt
 
 Please maintain this license information along with authorship
 and copyright notices in any redistribution of this code
@@ -55,13 +55,13 @@ and copyright notices in any redistribution of this code
 #define ACK_TIME        2000  // # of ms to wait for an ack
 #define SERIAL_BAUD     38400
 #define TXPOWER           25 // 7 = -18 + 25,  this is 7 dBm.
-#define F_DEV_STEPS     0  
+#define F_DEV_STEPS     0
 
 //------------------------------------------------------------------------------
 // PIN-Konfiguration 
 //------------------------------------------------------------------------------
 // UART pins
-#define RXPIN 0 
+#define RXPIN 0
 #define TXPIN 1 // pin der an RXD vom PI geht.
 // LED pin
 #define LEDpin 8 // D8, PA2 - set to 0 to disable LED
