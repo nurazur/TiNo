@@ -4,25 +4,25 @@ Ziel dieses Projekts ist die Entwicklung schnurloser Funk Sensoren,
     die ber Batterien versorgt werden und z.B. mit dem Raspberry Pi kommunizieren.
     Die Entwicklung hat zum Ziel:
  
-- minimale Kosten (Stckkosten unter 5 EUR)
-- minimale Gr”sse (Streichholzschachtel)
+- minimale Kosten (Stückkosten unter 5 EUR)
+- minimale Grösse (Streichholzschachtel)
 - minimaler Stromverbrauch
 - maximale Batterielebensdauer (5 Jahre oder mehr)
 - maximale Reichweite 
 - maximal einfach nachzubauen
 - Plug&Play Firmware
    
-Als Sensor kann man so ziemlich alles verwenden, ob Temperatur, Luftfeuchtigkeit, Luftdruck, H”henmesser, Lichtintensit„t, UV Index, 
-Anwesenheitssensoren, Magnetschalter, Erschtterungs-Sensoren, Feuchtigkeitsmesser usw also im Prinzip alle Arten von Sensoren. Voraussetzung ist dass der Sensor bis mindestens 2.2V Betriebsspannung spezifiziert ist. Sonst kann die Batterieladung nicht voll ausgenutzt werden. 
+Als Sensor kann man so ziemlich alles verwenden, ob Temperatur, Luftfeuchtigkeit, Luftdruck, Höhenmesser, Lichtintensität, UV Index, 
+Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, Feuchtigkeitsmesser usw also im Prinzip alle Arten von Sensoren. Voraussetzung ist dass der Sensor bis mindestens 2.2V Betriebsspannung spezifiziert ist. Sonst kann die Batterieladung nicht voll ausgenutzt werden. 
 
-Die Leiterplatten passen zu im Handel erh„ltlichen PVC Geh„usen, welche in etwa die Gr”sse einer Streichholzschachtel haben. Die verwendeten Komponenten sind am Markt eingefhrt, jederzeit erh„ltlich und
-dadurch kostengnstig zu beschaffen. 
+Die Leiterplatten passen zu im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben. Die verwendeten Komponenten sind am Markt eingeführt, jederzeit erhältlich und
+dadurch kostengünstig zu beschaffen. 
 
 # Features
 ## Allgemein
 - Spannung von ca. 1.8V bis 3.6V
 - Betrieb mit CR2032 Zelle bis zu 5 Jahren Lebensdauer
-- verschiedene Leiterplatten passend zum im Handel er„ltlichen Geh„usen 
+- verschiedene Leiterplatten passend zum im Handel erältlichen Gehäusen 
     
     
 ## Radio
@@ -36,7 +36,7 @@ dadurch kostengnstig zu beschaffen.
 - Link Budget bis 120dB
 - Empfindlichkeit -105 dBm typ. 
 - Reichweite t.b.d., ist aber sehr weit!
-- HF Kommunikation verschluesselt
+- HF Kommunikation verschlüsselt
 - FEC (Forward Error Correction)
 - Interleaver
     
@@ -46,7 +46,7 @@ dadurch kostengnstig zu beschaffen.
 - Ruhestrom < 2uA mit externem Quarz
 - Ruhestrom ca. 4uA mit internem RC Oszillator
 - 1 MHz Takt Sender erlaubt Betriebsspannung bis 1.8V
-- 8 MHz Takt Empf„nger
+- 8 MHz Takt Empfänger
 - I2C fr Sensoren
 - mindestens 4 weitere GPIO
     
@@ -61,9 +61,9 @@ dadurch kostengnstig zu beschaffen.
 - Open Source Software C++
 - Software kann einfach individuell angepasst werden
 - Programmierung mit Arduino IDE
-- Konfiguration der Nodes ueber serielles Interface (FTDA Adapter)
+- Konfiguration der Nodes über serielles Interface (FTDA Adapter)
 - Konfigurations- und Kalibrierdaten im EEPROM gespeichert.
-- EEPROM verschlsselt
+- EEPROM verschlüsselt
 - Flashen
   - mit ISP Adapter oder 
   - seriell mit FTDA Adapter ber Bootloader
