@@ -1,5 +1,5 @@
 # TiNo
-[German Version](https://github.com/nurazur/TiNo/blob/master/LIESMICH.md)
+![German Version](https://github.com/nurazur/TiNo/blob/master/LIESMICH.md)
 
 [looks like an old fashioned radio, but actually is not bigger than a matchbox](https://github.com/nurazur/TiNo/blob/master/P1010040.jpg)
 
