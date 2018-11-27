@@ -1,5 +1,6 @@
 # TiNo
-"TIny NOde" : Batteriebetriebener Funksensor oder Funk-Aktor. 
+![](https://github.com/nurazur/TiNo/blob/master/P1010040.jpg)
+"**TI**ny **NO**de" : Batteriebetriebener Funksensor oder Funk-Aktor. 
 Ziel dieses Projekts ist die Entwicklung schnurloser Funk Sensoren, 
     die über Batterien versorgt werden und z.B. mit dem Raspberry Pi kommunizieren.
     Die Entwicklung hat zum Ziel:
