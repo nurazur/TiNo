@@ -6,8 +6,7 @@ import serial
 import struct
 
 SerialPort = 'COM10'
-SerialBaud = 57600
-#PassWord = "WiNW_AzurdelaMer"
+SerialBaud = 38400
 PassWord = "TheQuickBrownFox"
 
 
