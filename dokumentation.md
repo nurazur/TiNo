@@ -31,7 +31,7 @@ Herausgekommen ist ein in allen Parametern optimierter Funksensor in der Groesse
 Auch das erklaerte Ziel der Einfachheit des Systems ist noch nicht erreicht. Das Einrichten der IDE, das Flashen und das Individualisieren der jeweiligen Nodes soll in Zukunft in einem einzigen Schritt erfolgen.
 ## Konzept
 ### Minimale Kosten:
-Minimale Kosten ergeben sich durch Minimierung der verwendeten Komponenten und durch optimale der Auswahl der Komponenten. Dies kann sich über die Zeit natürlich ändern.
+~~Minimale Kosten ergeben sich durch Minimierung der verwendeten Komponenten und durch optimale der Auswahl der Komponenten. Dies kann sich über die Zeit natürlich ändern.~~
 Momentan ist die Auswahl des ATMega328 Processors mit dem RFM69CW HF-Modul die kostengünstigste Variante. Weiterhin kann auf LDO's oder DC-DC Konverter verzichtet werden, da alle Module direkt von einer 3V CR2032 Zelle, zwei AAA Batterien oder zwei AA Batterien betrieben werden können. 
 ### minimale Grösse
 Aufgrund der verwendeten Frequenzen kann man die Baugrösse eines Sensors nicht beliebig verkleinern ohne grosse Zugeständnisse an die Performance zu machen. 
