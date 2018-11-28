@@ -1,7 +1,7 @@
 # TiNo
 [German Version](https://github.com/nurazur/TiNo/blob/master/LIESMICH.md)
 
-![looks like an old fashioned radio, but actually is not bigger than a matchbox](https://github.com/nurazur/TiNo/blob/master/P1010040.jpg)
+![looks like an old fashioned radio, but actually is not bigger than a matchbox](https://github.com/nurazur/TiNo/blob/master/matchbox.jpg)
 
 "**TI**ny **NO**de": battery powered wireless sensor or wireless actor. 
 Target of the project is the development of small size , cost effective battery powered wireless sensors. The sensors communicate with gateways, like a raspberry pi. 
