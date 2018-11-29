@@ -10,6 +10,7 @@ SerialBaud = 38400
 PassWord = "TheQuickBrownFox"
 
 
+
 # switch to normal terminal
 def set_normal_term():
     pass
@@ -678,6 +679,9 @@ if __name__ == '__main__':
                     
                 elif inputstr == 'pwd':
                     port.write(PassWord + '\n')
+
+                elif inputstr[:3] == 'pw,':
+                    port.write(inputstr[3:] + '\n')
 
                 else:
                     print "Invalid command: %s" % inputstr 

@@ -11,10 +11,10 @@
                "architecture": "avr",
                "version": "1.0.0",
                "category": "Contributed",
-               "url": "https://github.com/nurazur/TiNo/releases/downloads/tino-avr_1.0.0v.zip",
+               "url": "https://github.com/nurazur/TiNo/releases/download/v0.0.0/tino-avr_1.0.0v.zip",
                "archiveFileName": "tino-avr_1.0.0v.zip",
-               "checksum": "SHA-256:8991454F28E381399ED0DC50D28424CD8D851B6F3940766538BF748A6870BD34",
-               "size": "21379",
+               "checksum": "SHA-256:E469EF61CDD2FDF8124B815C6607804F18D9A652BC68BE8AD438E99782FE1449",
+               "size": "40564",
                "help":{
                   "online":"https://github.com/nurazur/TiNo/blob/master/dokumentation.md"
                },
