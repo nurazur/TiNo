@@ -58,15 +58,13 @@ Es wird ein Modul im Boards Manager der Arduino IDE bereitgestellt.
 
 
 ## IDE Einrichten
-Arduino IDE starten.
-
-*File -> Preferences* Oeffnen.
-
-Unter *Additional Boards Manager URL's* diesen Link eintragen:
+- Arduino IDE starten.
+- `File->Preferences` öffnen.
+- Unter `Additional Boards Manager URL's` diesen Link eintragen:
 https://raw.githubusercontent.com/nurazur/TiNo/master/package_tino_index.json
-Navigiere zu Tools-Board: eine lange Spalte oeffnet sich. Ganz oben auf *Boards Manager...* klicken
-Im Boards Manager nach `Tiny Node AVR Boards` suchen.
-Auf *Install* klicken. 
+- Navigiere zu `Tools->Board`: eine lange Spalte oeffnet sich. Ganz oben auf `Boards Manager...` klicken
+- Im Boards Manager nach `Tiny Node AVR Boards` suchen.
+- Auf `Install` klicken. 
 Dies installiert die Bibliotheken die zum Betrieb des Funkprotokolls gebraucht werden. 
 ### Empfänger (Gateway)
 Der Empfänger oder besser "Gateway" wird fuer ein Board mit 8 MHz Taktfrequenz kompiliert. Die "Fuses" muessen dementsprechend programmiert werden. 
