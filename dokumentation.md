@@ -39,47 +39,76 @@ Momentan ist die Auswahl des ATMega328 Processors mit dem RFM69CW HF-Modul die k
 Aufgrund der verwendeten Frequenzen kann man die Baugrösse eines Sensors nicht beliebig verkleinern ohne grosse Zugeständnisse an die Performance zu machen. 
 Mit Platinenabmessungen von ca. 35 x 50 mm habe ich im 868MHz ISM Band gute Erfahrungen gemacht. Im 433MHz ISM Band funktioniert das auch durchaus zufriedenstellend. 
 ### minimaler Stromverbrauch
-Konsequente Umsetzung der Möglichkeiten des ATMega328 Prozessors: Mit externem Uhrenquarz 32.678MHz arbeitet der Prozessor im Sleep Modus wie eine RTC (Real Time Clock), ich habe Ruheströme von 1.2µA gemessen. Ohne den Uhrenquarz verwendet man den internen RC Oszillator, da messe ich ca. 4µA, das ist aber immer noch ein sehr guter Wert.
+Konsequente Umsetzung der Möglichkeiten des ATMega328 Prozessors. Optimierung der HF Parameter. Optimierung der Stromversorgung. 
 ### maximale Batterielebensdauer
-Die Lebensdauer der Batterie setzt sich im Wesentlichen aus den vier folgenden Komponenten zusammen: 
-1. der Batterie. Hier wird eine CR2032 Knopfzelle verwendet, mit geschätzten 170mAh Kapazität.
+Die Lebensdauer der Batterie haengt vom Einsatzfall ab. Sie setzt sich im Wesentlichen aus den vier folgenden Komponenten zusammen: 
+1. der Batterie. Hier wird eine CR2032 Knopfzelle verwendet, mit geschätzten 170mAh nutzbarer Kapazität.
 2. der Energie die bei einem Sendeimpuls verbraucht wird. Hier habe ich die Dauer des Impulses sowie seine Leistung optimiert. Sehr komplexes Thema.
-3. dem Ruhestrom. 
-4. der Anzahl der Sendepulse pro Zeit. bei einer Rate von einem Puls pro Minute überwiegt der Stromverbrauch der Sendepulse. Bei einer Rate von einem Puls pro Stunde überwiegt der Stromverbrauch durch den Ruhestrom.
- 
-    - maximale Reichweite
-    - maximale Sicherheit
-    - maximal einfach nachzubauen
-    - Plug&Play Firmware
+3. dem Ruhestrom. Auch der Ruhestrom wurde optimiert. Mit externem Uhrenquarz 32.678MHz arbeitet der Prozessor im Sleep Modus wie eine RTC (Real Time Clock), ich habe Ruheströme von 1.2µA gemessen. Ohne den Uhrenquarz verwendet man den internen RC Oszillator, da messe ich ca. 4µA, das ist aber immer noch ein sehr guter Wert.
+4. der Anzahl der Sendepulse pro Zeit. bei einer Rate von einem Puls pro Minute überwiegt der Stromverbrauch der Sendepulse. Bei einer Rate von einem Puls pro Stunde überwiegt der Stromverbrauch durch den Ruhestrom. 
+Bei einem typischen Temperatur/Luftfeuchte Sensor, der alle 30 Minuten eine Messung sendet kann eine CR2032 Zelle 5 Jahre oder länger halten. 
+###maximale Reichweite
+Optimierung des Layouts. Optimierung der HF Parameter. Dadurch verringert sich die Eingangsempfindlichkeit drastisch. Optimierung des HF treibers um maximale Sendeleistung zu erreichen.
+###maximale Sicherheit
+Das Sendeprotokoll ist verschlüsselt. Der Schlüssel kann nicht aus dem Flash gelesen werden wenn das Basisband versperrt wurde. Um zu  verhindern dass ein einmal aufgezeichnetes Signal bei Wiederholung etwas ausloest wird ein "rolling code" verwendet, der sicherstellt dass jedes Protokoll "einmalig" ist.
+###maximal einfach nachzubauen
+
+###Plug&Play Firmware
+kommt auch. Es wird ein Modul im Bards Manager der Arduino IDE bereitgestellt.
+
 ##Vorbereitung der Entwicklungsumgebung
- 
 ##IDE Einrichten
-    ###Empfänger (Gateway)
-    Der Empfänger oder besser "Gateway" wird fuer ein Board mit 8 MHz Taktfrequenz kompiliert. Die "Fuses" muessen dem entsprechend programmiert werden. 
-    ###Sender 
-    ###Bibliotheken Installieren
-    Die Bibliotheken koennen alle im Ordner "TiNo""stehen.
-    Folgende Bibliotheken braucht man:
-        calibration
-        configuration
-        Mac
-        RFM69
-        HTU21D_SoftwareWire
-        SHT3x_SoftwareWire
-    
-    ausserdem braucht man
-        SoftwareWire
-        PinChangeInterrupt
-            
-    ###boards.txt Editieren
-    Ein Board wird in Kuerze zur Verfuegung gestellt. 
+Arduino IDE starten.
+File->Preferences Oeffnen.
+Unter "Additional Boards Manager URL's" diesen Link eintragen:
+https://raw.githubusercontent.com/nurazur/TiNo/master/package_tino_index.json
+Navigiere zu Tools-Board: eine lange Spalte oeffnet sich. Ganz oben auf "Boards Manager..." klicken
+Im Boards Manager nach "Tiny Node AVR Boards" suchen.
+Auf "Install" klicken. 
+Dies installiert die Bibliotheken die zum Betrieb des Funkprotokolls gebraucht werden. 
+###Empfänger (Gateway)
+Der Empfänger oder besser "Gateway" wird fuer ein Board mit 8 MHz Taktfrequenz kompiliert. Die "Fuses" muessen dementsprechend programmiert werden. 
+###Sender 
+###Weitere Bibliotheken Installieren  
+Folgende Bibliotheken braucht man zusätzlich zur Installation des TiNo Boards:
+- SoftwareWire        (für I2C Bus Sensoren)
+- HTU21D_SoftwareWire (für den HTU21D Sensor Sketch)
+- SHT3x_SoftwareWire  (für den SHT3x Sketch)
+- PinChangeInterrupt  (Interrupts werden standardmässig unterstützt)
     
 ##Kompilieren und Flashen
-    ###mit ISP Adapter und Programmer
-    mit FTDA und USB-Seriall Adapter
-    
-Konfigurieren
-    EEPROM Speicher erklaert
+Dazu braucht man, zumindest kurzfristig, einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP)
+Zum Flashen der Boards gibt es zwei Konzepte:
+1. Einmalig mit dem ISP Programmer auf das Board einen Bootloader flashen. Der eigentliche Sketch wird dann über das serielle Interface des Boards geladen. Vorteil: Während der Entwicklungsphase kann man mit dem selben Interface flashen und testen, ohne das Interface wechseln zu müssen.
+2. Den Sketch direkt ohne Bootloader mit einem ISP Adapter flashen. Vorteil: In der Produktionsphase koennen Nodes in einem einzigen Arbeitsschritt geflasht werden. Da kein Bootloader vorhanden ist, hat man auch mehr Flash Speicher zur Verfügung.
+In beiden Fällen braucht man einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP).
+Diesen kann man sich leicht mit einem Arduino UNO oder einem Arduino Nano selbst herstellen. 
+###mit FTDI und USB-Seriell Adapter
+Einmaliger Vorgang, wenn man das Board zum ersten mal startet:
+- Wenn man einen Arduino (z.B.UNO) als Programmer benutzt: Bei Tools -> Programmer "Arduino as ISP" auswählen (nicht "ArduinoISP"!)
+- Ansonsten den Programmer seiner Wahl auswählen
+- COM Port des Programmers einstellen unter Tools->Port
+- Setup auswählen: "bootloader", je nach Anwendung ist das 'Sensor' oder 'Gateway'. 
+- Tools-> Burn Bootloader klicken. Jetzt wiird das Board mit den zuvor gewählten Parametern konfiguriert und der Bootloader geflasht.
+
+Normales Flashen:
+- COM Port des seriellen Interfaces auswählen: Tools -> Port:
+- in der IDE Sketch -> Upload klicken. Jetzt wirdder Sketch kompiliert und geflasht.
+
+###Flashen mit ISP Adapter und Programmer
+Einmaliger Vorgang, wenn man das Board zum ersten mal startet:
+-Setup je nach Anwendung auswählen, "Sensor" oder "Gateway". Die Option ohne Bootloader wählen.
+Normales Flashen:
+- Wenn man einen Arduino (z.B.UNO) als Programmer benutzt: Bei Tools -> Programmer "Arduino as ISP" auswählen (nicht "ArduinoISP"!)
+- Ansonsten den Programmer seiner Wahl auswählen
+- COM Port einstellen unter Tools->Port
+- In der Arduino IDE "sketch -> Upload using Programmer" klicken. Jetzt kompiliert der Sketch, eventuell mit Warnungen (die man aber ignorieren kann) und lädt den binären Code auf das Board hoch. 
+
+  
+##Nodes Konfigurieren
+Nach dem Flashen sind die Nodes und die Gateways noch nicht betriebsbereit (leider, wird verbessert). Das EEPROM muss zuerst mit sinnvollen Daten gefüllt, "kalibriert" werden. 
+###EEPROMer Python tool
+###EEPROM Speicher erklaert:
     PCI Trigger Byte Bitbelegung
         PCIxTrigger bits 0 and 1:
             0bxx00 LOW
@@ -91,16 +120,15 @@ Konfigurieren
             0b00xx INPUT
             0b01xx OUTPUT
             0b10xx INPUT_PULLUP    
-    Tool EEPROMer Python tool
-
-Vorausetzungen: Was braucht man?
-    USB-Seriell Adapter
-    ISP-Programmer
-    Gateway: etwas das einen seriellen Port oeffnen, lesen und schreiben kann (PC, Raspberry Pi,...)
+##Nachbau
+###Vorausetzungen: Was braucht man?
+- USB-Seriell Adapter
+- ISP-Programmer
+- Gateway: etwas das einen seriellen Port oeffnen, lesen und schreiben kann (PC, Raspberry Pi,...)
     
-Hardware
-    Elektronik - Schaltplan erklaert
-    Leiterplatten
-    Mechanik (Gehäuse)
+##Hardware
+###Elektronik - Schaltplan erklaert
+###Leiterplatten
+###Mechanik (Gehäuse)
 
 
