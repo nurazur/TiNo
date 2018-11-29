@@ -59,12 +59,14 @@ Es wird ein Modul im Boards Manager der Arduino IDE bereitgestellt.
 
 ## IDE Einrichten
 Arduino IDE starten.
-File->Preferences Oeffnen.
-Unter "Additional Boards Manager URL's" diesen Link eintragen:
+
+*File -> Preferences* Oeffnen.
+
+Unter *Additional Boards Manager URL's* diesen Link eintragen:
 https://raw.githubusercontent.com/nurazur/TiNo/master/package_tino_index.json
-Navigiere zu Tools-Board: eine lange Spalte oeffnet sich. Ganz oben auf "Boards Manager..." klicken
-Im Boards Manager nach "Tiny Node AVR Boards" suchen.
-Auf "Install" klicken. 
+Navigiere zu Tools-Board: eine lange Spalte oeffnet sich. Ganz oben auf *Boards Manager...* klicken
+Im Boards Manager nach `Tiny Node AVR Boards` suchen.
+Auf *Install* klicken. 
 Dies installiert die Bibliotheken die zum Betrieb des Funkprotokolls gebraucht werden. 
 ### Empfänger (Gateway)
 Der Empfänger oder besser "Gateway" wird fuer ein Board mit 8 MHz Taktfrequenz kompiliert. Die "Fuses" muessen dementsprechend programmiert werden. 
@@ -83,7 +85,7 @@ Zum Flashen der Boards gibt es zwei Konzepte:
 2. Den Sketch direkt ohne Bootloader mit einem ISP Adapter flashen. Vorteil: In der Produktionsphase koennen Nodes in einem einzigen Arbeitsschritt geflasht werden. Da kein Bootloader vorhanden ist, hat man auch mehr Flash Speicher zur Verfügung.
 In beiden Fällen braucht man einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP).
 Diesen kann man sich leicht mit einem Arduino UNO oder einem Arduino Nano selbst herstellen. 
-## #mit FTDI und USB-Seriell Adapter
+### mit FTDI und USB-Seriell Adapter
 Einmaliger Vorgang, wenn man das Board zum ersten mal startet:
 - Wenn man einen Arduino (z.B.UNO) als Programmer benutzt: Bei Tools -> Programmer "Arduino as ISP" auswählen (nicht "ArduinoISP"!)
 - Ansonsten den Programmer seiner Wahl auswählen
