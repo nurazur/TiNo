@@ -9,10 +9,11 @@ The targets are:
  
 - low cost (BOM under 5 Euro)
 - very small size (matchbox)
-- extremely low sleep current
-- long battery life time (5 years and more on a CR2032 cell)
+- ultra low sleep current
+- long battery life time: 5 years and more on a CR2032 cell
 - long range (what ever this means :-), but its realy long)
 - simple to build up
+- communication security
 - Plug&Play Firmware
    
 Sensors can be almost any, like temperature, relative humidity, air pressure, altitude meter, light intensity, UV Index, 
@@ -52,6 +53,7 @@ PCBs fit into low cost PVC boxes with the size of a matchbox that are readily av
 - 8 MHz clock for gateway receiver
 - I2C bus
 - min 4 additional GPIO
+- CPU can be locked to avoid reading the flash code
     
 ## Sensors
 - HTU21D
@@ -64,10 +66,10 @@ PCBs fit into low cost PVC boxes with the size of a matchbox that are readily av
 - Open Source Software C++
 - Software can easily be adopted individually
 - Programming tool is Arduino IDE
-- Configuration of Nodes via serial interface (FTDA Adapter)
+- Configuration of Nodes via serial interface (FTDI Adapter)
 - configuration data and calibration data reside in EEPROM
 - EEPROM encrypted 
 - Flashing
   - using ISP Adapter or 
-  - serial with FTDA Adapter and Bootloader
+  - serial with FTDI Adapter and Bootloader
 - up to 4 external interrupts (i.e. push buttons) can be configured
