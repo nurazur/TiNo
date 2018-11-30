@@ -161,8 +161,9 @@ Passwort eingeben:
 Nachdem das Tool "Pass OK" meldet, kann man mit dem Konfigurieren beginnen. 
 Folgende Syntax wird von dem Tool verstanden:
 `help` listet die Optionen auf:
-| Opion | Beschreibung                                                                           
-| --- | --- |
+
+| Option | Beschreibung  |                                                                  
+|:-------|:--------------|
 |`exit` | terminate program
 |`help`  or `?` | print this help text
 |`c` | measure ADC and store in EEPROM.
