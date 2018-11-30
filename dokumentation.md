@@ -18,7 +18,11 @@ Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, Feuchtigkeitsmes
 
 Die Leiterplatten passen in im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben.
 ## Inhalt
+<<<<<<< HEAD
 - [Beschreibung des Projekts](https://github.com/nurazur/TiNo/blob/master/dokumentation.md#beschreibung-des-projekts)
+=======
+- [Beschreibung des Projekts](beschreibung-des-projekts)
+>>>>>>> b40e6bf47b733a7641b21686ff1e42be86bdfe3e
 - Das Konzept
 - Wie Funktionierts?
 - IDE Einrichten
