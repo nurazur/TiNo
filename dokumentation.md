@@ -162,7 +162,7 @@ Nachdem das Tool "Pass OK" meldet, kann man mit dem Konfigurieren beginnen.
 Folgende Syntax wird von dem Tool verstanden:
 `help` listet die Optionen auf:
 
-| Option | Beschreibung  |                                                                  
+| Kommando | Beschreibung  |                                                                  
 |:-------|:--------------|
 |`exit` | terminate program
 |`help`  or `?` | print this help text
@@ -190,13 +190,16 @@ Wenn man mehr machen will/muss, wäre eine automatisierte Version praktisch. Ich
 
 Im Moment kann man die wichtigsten Aktionen durch die Kommandozeile auslösen. 
 Unterstützt werden zur Zeit folgende Optionen:
-- `-pwd`            Sende das im Tool hinterlegte Passwort
-- `-cs`             lies die Prüfsumme vom EEPROM
-- `-ls`             Liste der EEPROM Werte
-- `-cp,<Dateiname>` Kopieren des Inhalts einer Konfigurationsdatei in das EEPROM
-- `-s`              berechnen und speichern der Prüfsumme
-- `-x`              EEPROM verschlüsseln und Daten abspeichern
-- `-q`              Tool beenden
+
+| Option | Beschreibung  |                                                                  
+|:-------|:--------------|
+-pwd | Sende das im Tool hinterlegte Passwort
+-cs|   lies die Prüfsumme vom EEPROM
+-ls | Liste der EEPROM Werte
+-cp,<Dateiname>| Kopieren des Inhalts einer Konfigurationsdatei in das EEPROM
+-s | berechnen und speichern der Prüfsumme
+-x | EEPROM verschlüsseln und Daten abspeichern
+-q | Tool beenden
 
 eine Kommandozeile sieht dann beispielsweise so aus:
 
