@@ -17,20 +17,30 @@ Als Sensor kann man so ziemlich alles verwenden, ob Temperatur, Luftfeuchtigkeit
 Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, Feuchtigkeitsmesser usw also im Prinzip alle Arten von Sensoren.
 
 Die Leiterplatten passen in im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben.
-
+##Inhalt
+- Beschreibung des Projekts
+- Das Konzept
+- Wie Funktionierts?
+- IDE Einrichten
+- Software Kompilieren und Flashen
+- Nodes Konfigurieren
+- Nachbau
+- Elektronik
+- Leiterplatten
+- Mechanik (Gehäuse)
 
 ## Beschreibung des Projekts
 Der TiNo Sensor macht periodisch eine Messung, z.B. der Umgebungstemperatur und sendet das Ergebnis mit einer kurzen HF Aktivität ("Puls") an eine Basisstation. Diese breitet das Signal auf und speichert das Ergebnis in einer Datenbank, die z.B. von einem Cloud Service ausgewertet werden kann. Der TiNo kann gleichzeitig auch Ueberwachungsaufgaben übernehmen, wie z.B das Oeffnen einer Türe melden. 
 
-Die Idee zu dieser Entwicklung wurde bei mir durch ein Projekt im [deutschen Raspberry Pi Forum](https://forum-raspberrypi.de/forum/thread/7472-batteriebetriebene-funk-sensoren/) ausgeloest.
-Ich moechte mich an dieser Stelle nocheinmal herzlich bei allen Beteiligten fuer die harte Arbeit die dahinter steckt bedanken. 
-Da wurde mit viel Energie und Enthusiasmus ein System zum Senden und Empfangen von Sensordaten "zusammengebaut", was zur Entwicklung der "TinyTx4" und "TinyRX3" Platinen auf der Basis des ATtiny84a Prozessors gefuehrt hat. ~~Ich habe lange Zeit mit diesen Platinen experimentiert, versucht sie mit Sensoren kombiniert in anschauliche (also mit hohem WAF) Boxen zu montieren und zu betreiben, kam aber schnell an die Grenzen dessen was ich mir eigentlich vorgestellt hatte. Mangelndes Talent für mechanische Dinge kommt hinzu.~~
+Die Idee zu dieser Entwicklung wurde bei mir durch ein Projekt im [deutschen Raspberry Pi Forum](https://forum-raspberrypi.de/forum/thread/7472-batteriebetriebene-funk-sensoren/) ausgelöst.
+Ich möchte mich an dieser Stelle nocheinmal herzlich bei allen Beteiligten für die harte Arbeit die dahinter steckt bedanken. 
+Da wurde mit viel Energie und Enthusiasmus ein System zum Senden und Empfangen von Sensordaten "zusammengebaut", was zur Entwicklung der "TinyTx4" und "TinyRX3" Platinen auf der Basis des ATtiny84a Prozessors geführt hat. ~~Ich habe lange Zeit mit diesen Platinen experimentiert, versucht sie mit Sensoren kombiniert in anschauliche (also mit hohem WAF) Boxen zu montieren und zu betreiben, kam aber schnell an die Grenzen dessen was ich mir eigentlich vorgestellt hatte. Mangelndes Talent für mechanische Dinge kommt hinzu.~~
 
-Für Ein Endprodukt eignen sich die TinyTx Platinen leider nicht, aber als Experimentier- und Lernplatform haben sie mir unschätzbare Dienste geleistet. Zunächst ging es mir um technische Verbesserungen: Optimierung des Link-Budgets, ein binäres, wesentlich kuerzeres Protokoll, Verbesserungen beim Stromverbrauch und beim Ruhestrom, ich experimentierte HF-seitig unter anderem mit FEC (Forward Error Correction), Interleavern, Baud Raten und Filterbandbreiten, und schliesslich war klar: ein anderer Prozessor muss her, der ATtiny mit seinen 8kB Flash kann nicht mithalten.
+Für Ein Endprodukt eignen sich die TinyTx Platinen leider nicht, aber als Experimentier- und Lernplatform haben sie mir unschätzbare Dienste geleistet. Zunächst ging es mir um technische Verbesserungen: Optimierung des Link-Budgets, ein binäres, wesentlich kürzeres Protokoll, Verbesserungen beim Stromverbrauch und beim Ruhestrom, ich experimentierte HF-seitig unter anderem mit FEC (Forward Error Correction), Interleavern, Baud Raten und Filterbandbreiten, und schliesslich war klar: ein anderer Prozessor muss her, der ATtiny mit seinen 8kB Flash kann nicht mithalten.
 
-Ich begann von vorne. Mein Ansatzpunkt war aber nicht erst eine Platine zu entwerfen und mich dann um die Mechanik zu kuemmern, sondern umgekehrt. Und so habe ich die TiNo Platinen an das Gehäuse und ihren Zweck angepasst und nicht umgekehrt. 
-Herausgekommen ist ein in allen Parametern optimierter Funksensor in der Groesse einer Streichholzschachtel, welchen ich Tino = **TI**ny **NO**de nenne. Spaeter kann man daraus dann das **TI**ny **N**etw**O**rk machen, denn auf der Softwareseite, speziell am Gateway gibt es noch unendlich viel Arbeit.
-Auch das erklaerte Ziel der Einfachheit des Systems ist noch nicht erreicht. Das Einrichten der IDE, das Flashen und das Individualisieren der jeweiligen Nodes soll in Zukunft in einem einzigen Schritt erfolgen.
+Ich begann von vorne. Mein Ansatzpunkt war aber nicht erst eine Platine zu entwerfen und mich dann um die Mechanik zu kümmern, sondern umgekehrt. Und so habe ich die TiNo Platinen an das Gehäuse und ihren Zweck angepasst und nicht umgekehrt. 
+Herausgekommen ist ein in allen Parametern optimierter Funksensor in der Grösse einer Streichholzschachtel, welchen ich Tino = **TI**ny **NO**de nenne. Später kann man daraus dann das **TI**ny **N**etw**O**rk machen, denn auf der Softwareseite, speziell am Gateway gibt es noch unendlich viel Arbeit.
+Auch das erklärte Ziel der Einfachheit des Systems ist noch nicht erreicht. Das Einrichten der IDE, das Flashen und das Individualisieren der jeweiligen Nodes soll in Zukunft in einem einzigen Schritt erfolgen.
 ## Das Konzept
 ### Minimale Kosten:
 ~~Minimale Kosten ergeben sich durch Minimierung der verwendeten Komponenten und durch optimale der Auswahl der Komponenten. Dies kann sich über die Zeit natürlich ändern.~~
@@ -41,7 +51,7 @@ Mit Platinenabmessungen von ca. 35 x 50 mm habe ich im 868MHz ISM Band gute Erfa
 ### minimaler Stromverbrauch
 Konsequente Umsetzung der Möglichkeiten des ATMega328 Prozessors. Optimierung der HF Parameter. Optimierung der Stromversorgung. 
 ### maximale Batterielebensdauer
-Die Lebensdauer der Batterie haengt vom Einsatzfall ab. Sie setzt sich im Wesentlichen aus den vier folgenden Komponenten zusammen: 
+Die Lebensdauer der Batterie hängt vom Einsatzfall ab. Sie setzt sich im Wesentlichen aus den vier folgenden Komponenten zusammen: 
 1. der Batterie. Hier wird eine CR2032 Knopfzelle verwendet, mit geschätzten 170mAh nutzbarer Kapazität.
 2. der Energie die bei einem Sendeimpuls verbraucht wird. In diesem Projekt habe ich die Dauer des Impulses sowie seine Leistung optimiert. Sehr komplexes Thema.
 3. dem Ruhestrom. Auch der Ruhestrom wurde optimiert. Mit externem Uhrenquarz 32.678MHz arbeitet der Prozessor im Sleep Modus wie eine RTC (Real Time Clock), ich habe Ruheströme von 1.2µA gemessen. Ohne den Uhrenquarz verwendet man den internen RC Oszillator, da messe ich ca. 4µA, das ist aber immer noch ein sehr guter Wert.
@@ -50,24 +60,27 @@ Bei einem typischen Temperatur/Luftfeuchte Sensor, der alle 30 Minuten eine Mess
 ### maximale Reichweite
 Optimierung des Layouts. Optimierung der HF Parameter. Dadurch verringert sich die Eingangsempfindlichkeit drastisch. Optimierung des HF treibers um maximale Sendeleistung zu erreichen.
 ### maximale Sicherheit
-Das Sendeprotokoll ist verschlüsselt. Der Schlüssel kann nicht aus dem Flash gelesen werden wenn das Basisband versperrt wurde. Um zu  verhindern dass ein einmal aufgezeichnetes Signal bei Wiederholung etwas ausloest wird ein "rolling code" verwendet, der sicherstellt dass jedes Protokoll "einmalig" ist.
+Das Sendeprotokoll ist verschlüsselt. Der Schlüssel kann nicht aus dem Flash gelesen werden wenn das Basisband versperrt wurde. Um zu  verhindern dass ein einmal aufgezeichnetes Signal bei Wiederholung etwas auslöst wird ein "rolling code" verwendet, der sicherstellt dass jedes Protokoll "einmalig" ist.
 ### Einfachheit
 Da gibts noch Raum für Verbesserung.
 #### Plug&Play Firmware
 Es wird ein Modul im Boards Manager der Arduino IDE bereitgestellt.
 
+## Wie Funktionierts?
+### Softwarearchitektur
+### Hardwarearchitektur
 
 ## IDE Einrichten
 - Arduino IDE starten.
 - `File->Preferences` öffnen.
 - Unter `Additional Boards Manager URL's` diesen Link eintragen:
 https://raw.githubusercontent.com/nurazur/TiNo/master/package_tino_index.json
-- Navigiere zu `Tools->Board`: eine lange Spalte oeffnet sich. Ganz oben auf `Boards Manager...` klicken
+- Navigiere zu `Tools->Board`: eine lange Spalte öffnet sich. Ganz oben auf `Boards Manager...` klicken
 - Im Boards Manager nach `Tiny Node AVR Boards` suchen.
 - Auf `Install` klicken. 
 Dies installiert die Bibliotheken die zum Betrieb des Funkprotokolls gebraucht werden. 
 ### Empfänger (Gateway)
-Der Empfänger oder besser "Gateway" wird fuer ein Board mit 8 MHz Taktfrequenz kompiliert. Die "Fuses" muessen dementsprechend programmiert werden. 
+Der Empfänger oder besser "Gateway" wird für ein Board mit 8 MHz Taktfrequenz kompiliert. Die "Fuses" müssen dementsprechend programmiert werden. 
 ### Sender 
 ### Weitere Bibliotheken Installieren  
 Folgende Bibliotheken braucht man zusätzlich zur Installation des TiNo Boards:
@@ -80,7 +93,7 @@ Folgende Bibliotheken braucht man zusätzlich zur Installation des TiNo Boards:
 Dazu braucht man, zumindest kurzfristig, einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP)
 Zum Flashen der Boards gibt es zwei Konzepte:
 1. Einmalig mit dem ISP Programmer auf das Board einen Bootloader flashen. Der eigentliche Sketch wird dann über das serielle Interface des Boards geladen. Vorteil: Während der Entwicklungsphase kann man mit dem selben Interface flashen und testen, ohne das Interface wechseln zu müssen.
-2. Den Sketch direkt ohne Bootloader mit einem ISP Adapter flashen. Vorteil: In der Produktionsphase koennen Nodes in einem einzigen Arbeitsschritt geflasht werden. Da kein Bootloader vorhanden ist, hat man auch mehr Flash Speicher zur Verfügung.
+2. Den Sketch direkt ohne Bootloader mit einem ISP Adapter flashen. Vorteil: In der Produktionsphase können Nodes in einem einzigen Arbeitsschritt geflasht werden. Da kein Bootloader vorhanden ist, hat man auch mehr Flash Speicher zur Verfügung.
 In beiden Fällen braucht man einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP).
 Diesen kann man sich leicht mit einem Arduino UNO oder einem Arduino Nano selbst herstellen. 
 ### mit FTDI und USB-Seriell Adapter
@@ -108,7 +121,7 @@ Normales Flashen:
 ## Nodes Konfigurieren
 Nach dem Flashen sind die Nodes und die Gateways noch nicht betriebsbereit (leider, wird verbessert). Das EEPROM muss zuerst mit sinnvollen Daten gefüllt, "kalibriert" werden. 
 ### EEPROMer Python tool
-### EEPROM Speicher erklaert:
+### EEPROM Speicher erklärt:
     PCI Trigger Byte Bitbelegung
         PCIxTrigger bits 0 and 1:
             0bxx00 LOW
@@ -124,11 +137,12 @@ Nach dem Flashen sind die Nodes und die Gateways noch nicht betriebsbereit (leid
 ### Vorausetzungen: Was braucht man?
 - USB-Seriell Adapter
 - ISP-Programmer
-- Gateway: etwas das einen seriellen Port oeffnen, lesen und schreiben kann (PC, Raspberry Pi,...)
+- Gateway: etwas das einen seriellen Port öffnen, lesen und schreiben kann (PC, Raspberry Pi,...)
     
-## Hardware
-### Elektronik - Schaltplan erklaert
-### Leiterplatten
-### Mechanik (Gehäuse)
+## Elektronik 
+### Schaltplan erklärt
+### Messergebnisse
+## Leiterplatten
+## Mechanik (Gehäuse)
 
 
