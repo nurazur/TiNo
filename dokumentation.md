@@ -161,27 +161,28 @@ Passwort eingeben:
 Nachdem das Tool "Pass OK" meldet, kann man mit dem Konfigurieren beginnen. 
 Folgende Syntax wird von dem Tool verstanden:
 `help` listet die Optionen auf:
-
-- `exit`          terminate program
-- `help`  or `?`  print this help text
-- `c`             measure ADC and store in EEPROM.
-- `copy` or `cp`  copy file content to EEPROM. syntax: cp, <filename>
-- `cs`            verify checksum.
-- `fe`            receive 10 packets from external source, calculate mean and store in EEPROM
-- `g` or `get`    store eeprom content to file. Syntax: `g(et),<filename>`
-- `ls`            List EEPROM content.
-- `m`             Measure VCC with calibrated values
-- `quit`          terminate program
-- `read`  or `r`  read from EEPROM. Syntax: `r(ead),<addr>`
-- `ri`            read 16 bit integer from EEPROM. Syntax: `ri(ead),<addr>`
-- `rf`            read float from EEPROM. Syntax: `ri(ead),<addr>`
-- `s`             request checksum update and store in EEPROM.
-- `vddcal`        calibrate VCC measurement. Syntax: `v(ddcal),<VCC at device in mV>`
-- `write` or `w`  write value to to EEPROM.  Syntax: `w(rite),<addr>,<value>`
-- `wf`            write float value to EEPROM. Syntax: `wf,<addr>,<value>`
-- `wl`            write long int value to to EEPROM.  Syntax: `wl,<addr>,<value>`, value format can be hex
-- `wu`            write unsigned int value to EEPROM. Syntax: `wu,<addr>,<value>`
-- `x`             exit calibration mode and continue with loop()
+| Opion | Beschreibung                                                                           
+| --- | --- |
+|`exit` | terminate program
+|`help`  or `?` | print this help text
+|`c` | measure ADC and store in EEPROM.
+|`copy` or `cp` | copy file content to EEPROM. syntax: cp, <filename>
+|`cs`| verify checksum.
+|`fe` | receive 10 packets from external source, calculate mean and store in EEPROM
+|`g` or `get` | store eeprom content to file. Syntax: `g(et),<filename>`
+|`ls`| List EEPROM content.
+|`m` |          Measure VCC with calibrated values
+|`quit` | terminate program
+|`read`  or `r` | read from EEPROM. Syntax: `r(ead),<addr>`
+|`ri`| read 16 bit integer from EEPROM. Syntax: `ri(ead),<addr>`
+|`rf`| read float from EEPROM. Syntax: `ri(ead),<addr>`
+|`s` | request checksum update and store in EEPROM.
+|`vddcal` | calibrate VCC measurement. Syntax: `v(ddcal),<VCC at device in mV>`
+|`write` or `w` |  write value to to EEPROM.  Syntax: `w(rite),<addr>,<value>`
+|`wf` | write float value to EEPROM. Syntax: `wf,<addr>,<value>`
+|`wl` | write long int value to to EEPROM.  Syntax: `wl,<addr>,<value>`, value format can be hex
+|`wu` | write unsigned int value to EEPROM. Syntax: `wu,<addr>,<value>`
+|`x` | exit calibration mode and continue with loop()
 
 Das Tool ist ursprünglich interaktiv, d.h. man greift von Hand auf das EEPROM zu und kann es so konfigurieren. Allerdings ist das nur bis zu einem bestimmten Grad praktisch, z.B. wenn man nur mal schnell eine ID ändern will, oder wenn man nur die Integrität des EEPROMs feststellen will. 
 Wenn man mehr machen will/muss, wäre eine automatisierte Version praktisch. Ich arbeite daran. 
@@ -200,7 +201,7 @@ eine Kommandozeile sieht dann beispielsweise so aus:
 
 `python eepromer_win_v007.py COM8 38400 -pwd -cp,receive_eeprom.cfg -ls -cs -x -q`
 
-In diesem Fall verbindet sich der Eepromer Tool mit dem TiNo Board auf COM8, 38400 Baud und arbeitet dann die liste der Optionen in der Reihenfolge ab, also:
+In diesem Fall verbindet sich das Eepromer Tool mit dem TiNo Board auf COM8, 38400 Baud und arbeitet dann die liste der Optionen in der Reihenfolge ab, also:
 1. `-pwd` sendet das im Programm hinterlegte Passwort an da TiNo Board
 2. `-cp,receive_eeprom.cfg` kopiert den Inhalt der Datei `receive_eeprom.cfg` vom PC auf das TiNo Board
 2. `-ls` listet den Inhalt des EEPROMs.
