@@ -17,8 +17,8 @@ Als Sensor kann man so ziemlich alles verwenden, ob Temperatur, Luftfeuchtigkeit
 Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, Feuchtigkeitsmesser usw also im Prinzip alle Arten von Sensoren.
 
 Die Leiterplatten passen in im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben.
-##Inhalt
-- Beschreibung des Projekts
+## Inhalt
+- [Beschreibung des Projekts](https://github.com/nurazur/TiNo/blob/master/dokumentation.md#beschreibung-des-projekts)
 - Das Konzept
 - Wie Funktionierts?
 - IDE Einrichten
@@ -121,6 +121,20 @@ Normales Flashen:
 ## Nodes Konfigurieren
 Nach dem Flashen sind die Nodes und die Gateways noch nicht betriebsbereit (leider, wird verbessert). Das EEPROM muss zuerst mit sinnvollen Daten gefüllt, "kalibriert" werden. 
 ### EEPROMer Python tool
+nach dem Start eines TiNos wird zunaechst das EEPROM gelesen. Da es verschluesselt ist, wird es zunaechst entschluesselt und die Pruefsumme gebildet. 
+
+Wenn die Pruefsumme mit der aus dem EEPROM gelesenen uebereinstimmt:
+Ueber den seriellen Port wird der String "CAL?" gesendet. Egal ob die Pruefsumme stimmt, wenn innerhalb von 250ms ein 'y' zurueckkommt, geht der Node in den Kalibriermodus. 
+Kommt keine Antwort, sendet der Node, nur als Debugnachricht, ein "timeout". Also nicht wundern ueber das Timeout, das zeigt an dass alles in Ordnung ist. 
+
+Wenn die Pruefsumme nicht uebereinstimmt:
+Der Node geht direkt inden Kalibriermodus.
+
+Das EEPROMer Tool ist in Python geschrieben, man braucht also unter Windows eine Installation von Python. WEnn man das EEPROMer Tool startet, oeffnet es zunaechst den seriellen Port. An einem FTDI Adapter bewirkt das, dass der angeschlossene Node neu startet, Dann wartet das Tool auf das 'CAL?' vom Node, und sendet ggf. das 'y' sofort zurueck um den Kalibriermodus zu erzwingen. 
+
+
+
+
 ### EEPROM Speicher erklärt:
     PCI Trigger Byte Bitbelegung
         PCIxTrigger bits 0 and 1:
