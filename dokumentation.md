@@ -17,8 +17,8 @@ Als Sensor kann man so ziemlich alles verwenden, ob Temperatur, Luftfeuchtigkeit
 Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, Feuchtigkeitsmesser usw also im Prinzip alle Arten von Sensoren.
 
 Die Leiterplatten passen in im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben.
-##Inhalt
-- Beschreibung des Projekts
+## Inhalt
+- [Beschreibung des Projekts](beschreibung-des-projekts)
 - Das Konzept
 - Wie Funktionierts?
 - IDE Einrichten
