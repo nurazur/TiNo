@@ -231,8 +231,9 @@ Es gibt zwei versionen, eine für Windows und eine fuer den Raspberry Pi.
 
 ### EEPROM Speicher erklärt:
 Diese Parameter sind derzeit im EEPROM gespeichert:
-| Parameter |  Wert | Beschreibung
-|:----|:----|:----
+
+| Parameter |  Wert | Beschreibung |
+|:----|:----|:----|
 NODEID| 0-255 | die Identitfizierung des TiNo
 NETWORKID | 0-255 | Identifizierung des Netzwerks, typisch 210 *)
 GATEWAYID | Das Ziel (Gateway) zu dem Nachrichten gesendet werden
