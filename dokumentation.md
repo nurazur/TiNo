@@ -34,11 +34,11 @@ Der TiNo Sensor macht periodisch eine Messung, z.B. der Umgebungstemperatur und 
 
 Die Idee zu dieser Entwicklung wurde bei mir durch ein Projekt im [deutschen Raspberry Pi Forum](https://forum-raspberrypi.de/forum/thread/7472-batteriebetriebene-funk-sensoren/) ausgelöst.
 Ich möchte mich an dieser Stelle nocheinmal herzlich bei allen Beteiligten für die harte Arbeit die dahinter steckt bedanken. 
-Da wurde mit viel Energie und Enthusiasmus ein System zum Senden und Empfangen von Sensordaten "zusammengebaut", was zur Entwicklung der "TinyTx4" und "TinyRX3" Platinen auf der Basis des ATtiny84a Prozessors geführt hat. ~~Ich habe lange Zeit mit diesen Platinen experimentiert, versucht sie mit Sensoren kombiniert in anschauliche (also mit hohem WAF) Boxen zu montieren und zu betreiben, kam aber schnell an die Grenzen dessen was ich mir eigentlich vorgestellt hatte. Mangelndes Talent für mechanische Dinge kommt hinzu.~~
+Da wurde mit viel Energie und Enthusiasmus ein System zum Senden und Empfangen von Sensordaten "zusammengebaut", was zur Entwicklung der "TinyTx4" und "TinyRX3" Platinen auf der Basis des ATtiny84a Prozessors geführt hat.
 
 Für Ein Endprodukt eignen sich die TinyTx Platinen leider nicht, aber als Experimentier- und Lernplatform haben sie mir unschätzbare Dienste geleistet. Zunächst ging es mir um technische Verbesserungen: Optimierung des Link-Budgets, ein binäres, wesentlich kürzeres Protokoll, Verbesserungen beim Stromverbrauch und beim Ruhestrom, ich experimentierte HF-seitig unter anderem mit FEC (Forward Error Correction), Interleavern, Baud Raten und Filterbandbreiten, und schliesslich war klar: ein anderer Prozessor muss her, der ATtiny mit seinen 8kB Flash kann nicht mithalten.
 
-Ich begann von vorne. Mein Ansatzpunkt war aber nicht erst eine Platine zu entwerfen und mich dann um die Mechanik zu kümmern, sondern umgekehrt. Und so habe ich die TiNo Platinen an das Gehäuse und ihren Zweck angepasst und nicht umgekehrt. 
+Ich begann von vorne. Bei der Gelegenheit habe ich die TiNo Platinen an das Gehäuse und ihren Zweck angepasst und nicht umgekehrt. 
 Herausgekommen ist ein in allen Parametern optimierter Funksensor in der Grösse einer Streichholzschachtel, welchen ich TINO = **TI**ny **NO**de nenne. Später kann man daraus dann das **TI**ny **N**etw**O**rk machen, denn auf der Softwareseite, speziell am Gateway gibt es noch unendlich viel Arbeit.
 Auch das erklärte Ziel der Einfachheit des Systems ist noch nicht erreicht. Das Einrichten der IDE, das Flashen und das Individualisieren der jeweiligen TiNos soll in Zukunft in einem einzigen Schritt erfolgen.
 ## Das Konzept
@@ -65,10 +65,22 @@ Das Sendeprotokoll ist verschlüsselt. Der Schlüssel kann nicht aus dem Flash g
 Da gibts noch Raum für Verbesserung.
 #### Plug&Play Firmware
 Es wird ein Modul im Boards Manager der Arduino IDE bereitgestellt.
-
+#### Unkomplizierte Hardware
 ## Wie Funktionierts?
 ### Softwarearchitektur
 ### Hardwarearchitektur
+Die TiNo Boards sind so einfach wie moeglich aufgebaut und haben folgende Features:
+- ATMega328p-au Prozessor
+- RFM69CW oder RFM69HCW oder RFM95 Modul von HopeRF
+- Footprint fuer einen HTU21D/SHT20/SHT21/SHT25 ist auf der Leiterplatte, erfordert aber eine fortgeschrittene Loettechnik (Loetpaste und Kochplatte)
+- Anschlussmoeglichkeiten fuer einen I2C Sensor beliebiger Wahl. 
+- Ein Batteriehalter
+- ISP (in-System-Programmin) Adapter
+- FTDI Adapter
+- je nach Board verschiedene GPIO's die man fuer alle moeglichen digitalen Ereignisse (z.B. Tastendruck) konfigurieren kann
+- Status LED
+- auf manchen Boards ist eine optionale SMA Buchse vorgesehen (externe Antenne)
+- alle Boards sind jeweils fuer ein bestimmtes Gehaeuse konzipiert, koennen aber auch anderweitig eingesetzt werden. 
 
 ## IDE Einrichten
 - Arduino IDE starten.
@@ -105,7 +117,8 @@ Folgende Bibliotheken braucht man zusätzlich zur Installation des TiNo Boards:
 - *PinChangeInterrupt*  (Interrupts werden standardmässig unterstützt)
 - *Lowpower*            (wenn man einen externen Uhrenquarz benutzt)
 
-Diese Bibliotheken sind nicht mit im TiNo Package enthalten (derzeit)
+Diese Bibliotheken sind nicht mit im TiNo Package enthalten (derzeit). *HTU21D_SoftwareWire* und *SHT3x_SoftwareWire* sind im TiNo Github Repository, muessen aber von Hand in das library Verzeichnis uebertragen werden. Der Gedanke dahinter ist dass man die Bibliotheken ja auch fuer was anderes als TiNo verwenden kann.
+
 ## Kompilieren und Flashen
 Dazu braucht man, zumindest kurzfristig, einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP)
 Zum Flashen der Boards gibt es zwei Konzepte:
@@ -213,8 +226,53 @@ In diesem Fall verbindet sich das Eepromer Tool mit dem TiNo Board auf COM8, 384
 4. `-x` verlässt den Kalibriermodus
 5. `-q` beendet das Tool
 
-Eine Version für denRaspberry Pi gibt es auch, wird demnächst geliefert.
+Es gibt zwei versionen, eine für Windows und eine fuer den Raspberry Pi.
+
+
 ### EEPROM Speicher erklärt:
+Diese Parameter sind derzeit im EEPROM gespeichert:
+| Parameter |  Wert | Beschreibung
+|:----|:----|:----
+NODEID| 0-255 | die Identitfizierung des TiNo
+NETWORKID | 0-255 | Identifizierung des Netzwerks, typisch 210 *)
+GATEWAYID | Das Ziel (Gateway) zu dem Nachrichten gesendet werden
+VCCatCAL | typ. 3300 mV | Wert der Versorgungsspannung in mV zum Zeitpunkt der Kalibrierung
+VCCADC_CAL | typ. 350 | der ADC Wert der bei Anliegen von VCCatCAL kalibriert wurde
+SENDDELAY | xxx | Zeit in Sekunden/8 die zwischen zwei Messungen vergehen soll. 
+FREQBAND | 43, 86 | 43 fuer das 433MHz Band, 86 fuer das 868MHz Band
+FREQ_CENTER | z.B. 865.000 | die genaue Mittenfrequenz des Senders (muss fuer das gesamte Netzwerk idsentisch sein)
+TXPOWER | 0-31 | 31 = maximale Sendeleistung, 0 = minimale Sendeleistung in 1dB Schritten
+REQUESTACK | 0 oder 1 | legt fest ob ein empfangenes Telegramm quttiert werden soll (1) oder nicht (0)
+LEDCOUNT | 0 - 255 | legt fest ob ein gesendetes Telegramm von einem kurzen Blinken der LED begleitet wird und wie oft **)
+LEDPIN | 0, 8 | Pin an dem die LED haengt (beim TiNo Pin D8). Bei einem Wert von Null wird die LED gar nicht verwendet
+
+
+RXPIN=0
+TXPIN=1
+SDAPIN=18
+SCLPIN=19
+I2CPOWERPIN=9
+PCI0PIN=7
+PCI0TRIGGER=2
+PCI1PIN=128
+PCI1TRIGGER=2
+PCI2PIN=128
+PCI2TRIGGER=2
+PCI3PIN=128
+PCI3TRIGGER=2
+USE_CRYSTAL_RTC=0
+ENCRYPTION_ENABLE=1
+FEC_ENABLE=1
+INTERLEAVER_ENABLE=1
+EEPROM_VERSION_NUMBER=3
+SOFTWAREVERSION_NUMBER=5
+TXGAUSS_SHAPING=0
+SERIAL_ENABLE=1
+IS_RFM69HW=0
+PABOOST=0
+FDEV_STEPS=0
+CHECKSUM=255
+
     PCI Trigger Byte Bitbelegung
         PCIxTrigger bits 0 and 1:
             0bxx00 LOW
