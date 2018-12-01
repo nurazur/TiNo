@@ -1,5 +1,5 @@
 # TiNo
-![](https://github.com/nurazur/TiNo/blob/master/P1010040.jpg)
+![](https://github.com/nurazur/TiNo/blob/master/matchbox.jpg)
 "**TI**ny **NO**de" : Batteriebetriebener Funksensor oder Funk-Aktor. 
 Ziel dieses Projekts ist die Entwicklung schnurloser Funk Sensoren, 
     die über Batterien versorgt werden und z.B. mit dem Raspberry Pi kommunizieren.
