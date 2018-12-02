@@ -69,18 +69,18 @@ Es wird ein Modul im Boards Manager der Arduino IDE bereitgestellt.
 ## Wie Funktionierts?
 ### Softwarearchitektur
 ### Hardwarearchitektur
-Die TiNo Boards sind so einfach wie moeglich aufgebaut und haben folgende Features:
+Die TiNo Boards sind so einfach wie möglich aufgebaut und haben folgende Features:
 - ATMega328p-au Prozessor
 - RFM69CW oder RFM69HCW oder RFM95 Modul von HopeRF
-- Footprint fuer einen HTU21D/SHT20/SHT21/SHT25 ist auf der Leiterplatte, erfordert aber eine fortgeschrittene Loettechnik (Loetpaste und Kochplatte)
-- Anschlussmoeglichkeiten fuer einen I2C Sensor beliebiger Wahl. 
+- Footprint für einen HTU21D/SHT20/SHT21/SHT25 ist auf der Leiterplatte, erfordert aber eine fortgeschrittene Löttechnik (Lötpaste und Heizplatte)
+- Anschlussmöglichkeiten für einen I2C Sensor beliebiger Wahl. 
 - Ein Batteriehalter
 - ISP (in-System-Programmin) Adapter
 - FTDI Adapter
-- je nach Board verschiedene GPIO's die man fuer alle moeglichen digitalen Ereignisse (z.B. Tastendruck) konfigurieren kann
+- je nach Board verschiedene GPIO's die man für alle möglichen digitalen Ereignisse (z.B. Tastendruck) konfigurieren kann
 - Status LED
 - auf manchen Boards ist eine optionale SMA Buchse vorgesehen (externe Antenne)
-- alle Boards sind jeweils fuer ein bestimmtes Gehaeuse konzipiert, koennen aber auch anderweitig eingesetzt werden. 
+- alle Boards sind jeweils für ein bestimmtes Gehäuse konzipiert, können aber auch anderweitig eingesetzt werden. 
 
 ## IDE Einrichten
 - Arduino IDE starten.
@@ -117,7 +117,7 @@ Folgende Bibliotheken braucht man zusätzlich zur Installation des TiNo Boards:
 - *PinChangeInterrupt*  (Interrupts werden standardmässig unterstützt)
 - *Lowpower*            (wenn man einen externen Uhrenquarz benutzt)
 
-Diese Bibliotheken sind nicht mit im TiNo Package enthalten (derzeit). *HTU21D_SoftwareWire* und *SHT3x_SoftwareWire* sind im TiNo Github Repository, muessen aber von Hand in das library Verzeichnis uebertragen werden. Der Gedanke dahinter ist dass man die Bibliotheken ja auch fuer was anderes als TiNo verwenden kann.
+Diese Bibliotheken sind nicht mit im TiNo Package enthalten (derzeit). *HTU21D_SoftwareWire* und *SHT3x_SoftwareWire* sind im TiNo Github Repository, müssen aber von Hand in das library Verzeichnis übertragen werden. Der Gedanke dahinter ist dass man die Bibliotheken ja auch für was anderes als TiNo verwenden kann.
 
 ## Kompilieren und Flashen
 Dazu braucht man, zumindest kurzfristig, einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP)
@@ -198,7 +198,7 @@ Folgende Syntax wird von dem Tool verstanden:
 |`wu` | write unsigned int value to EEPROM. Syntax: `wu,<addr>,<value>`
 |`x` | exit calibration mode and continue with loop()
 
-Das Tool ist ursprünglich interaktiv, d.h. man greift von Hand auf das EEPROM zu und kann es so konfigurieren. Allerdings ist das nur bis zu einem bestimmten Grad praktisch, z.B. wenn man nur mal schnell eine ID ändern will, oder wenn man nur die Integrität des EEPROMs feststellen will. 
+Das Tool ist ursprünglich interaktiv, d.h. man greift "manuell" auf das EEPROM zu und kann es so konfigurieren. Allerdings ist das nur bis zu einem bestimmten Grad praktisch, z.B. wenn man nur mal schnell eine ID ändern will, oder wenn man nur die Integrität des EEPROMs feststellen will. 
 Wenn man mehr machen will/muss, wäre eine automatisierte Version praktisch. Ich arbeite daran. 
 
 Im Moment kann man die wichtigsten Aktionen durch die Kommandozeile auslösen. 
@@ -209,7 +209,7 @@ Unterstützt werden zur Zeit folgende Optionen:
 -pwd | Sende das im Tool hinterlegte Passwort
 -cs|   lies die Prüfsumme vom EEPROM
 -ls | Liste der EEPROM Werte
--cp,<Dateiname>| Kopieren des Inhalts einer Konfigurationsdatei in das EEPROM
+-cp,<Dateiname>| Kopieren des Inhalts einer Konfigurationsdatei zum TiNo
 -s | berechnen und speichern der Prüfsumme
 -x | EEPROM verschlüsseln und Daten abspeichern
 -q | Tool beenden
@@ -226,7 +226,7 @@ In diesem Fall verbindet sich das Eepromer Tool mit dem TiNo Board auf COM8, 384
 4. `-x` verlässt den Kalibriermodus
 5. `-q` beendet das Tool
 
-Es gibt zwei versionen, eine für Windows und eine fuer den Raspberry Pi.
+Es gibt zwei Versionen, eine für Windows und eine für den Raspberry Pi.
 
 
 ### EEPROM Speicher erklärt:
@@ -236,70 +236,115 @@ Diese Parameter sind derzeit im EEPROM gespeichert:
 |:----|:----|:----|
 NODEID| 0-255 | die Identitfizierung des TiNo
 NETWORKID | 0-255 | Identifizierung des Netzwerks, typisch 210 *)
-GATEWAYID | Das Ziel (Gateway) zu dem Nachrichten gesendet werden
+GATEWAYID | 0-255 | Das Ziel (Gateway) zu dem Nachrichten gesendet werden
 VCCatCAL | typ. 3300 mV | Wert der Versorgungsspannung in mV zum Zeitpunkt der Kalibrierung
 VCCADC_CAL | typ. 350 | der ADC Wert der bei Anliegen von VCCatCAL kalibriert wurde
-SENDDELAY | xxx | Zeit in Sekunden/8 die zwischen zwei Messungen vergehen soll. 
-FREQBAND | 43, 86 | 43 fuer das 433MHz Band, 86 fuer das 868MHz Band
-FREQ_CENTER | z.B. 865.000 | die genaue Mittenfrequenz des Senders (muss fuer das gesamte Netzwerk idsentisch sein)
+SENDDELAY | 0 - 65535 | Zeit in Sekunden/8 die zwischen zwei Messungen vergehen soll (Maximal 145 Stunden, ca 6 Tage). Bei einem Wert von 0 wird der RTC timer deaktiviert. **)
+FREQBAND | 43, 86 | 43 für das 433MHz Band, 86 für das 868MHz Band
+FREQ_CENTER | z.B. 865.000 | die genaü Mittenfrequenz des Senders (muss für das gesamte Netzwerk idsentisch sein)
 TXPOWER | 0-31 | 31 = maximale Sendeleistung, 0 = minimale Sendeleistung in 1dB Schritten
-REQUESTACK | 0 oder 1 | legt fest ob ein empfangenes Telegramm quttiert werden soll (1) oder nicht (0)
-LEDCOUNT | 0 - 255 | legt fest ob ein gesendetes Telegramm von einem kurzen Blinken der LED begleitet wird und wie oft **)
-LEDPIN | 0, 8 | Pin an dem die LED haengt (beim TiNo Pin D8). Bei einem Wert von Null wird die LED gar nicht verwendet
+REQUESTACK | 0 oder 1 | legt fest ob ein empfangenes Telegramm quittiert werden soll (1) oder nicht (0)
+LEDCOUNT | 0 - 255 | legt fest ob ein gesendetes Telegramm von einem kurzen Blinken der LED begleitet wird und wie oft ***)
+LEDPIN | 0, 8 | Pin an dem die LED hängt (beim TiNo Pin D8). Bei einem Wert von Null wird die LED gar nicht verwendet und ist frei für einen Interrupt verwendbar
+RXPIN | 0 | ohne Bedeutung, es wird das Modul *Serial* verwendet.
+TXPIN | 1 | ohne Bedeutung. 
+SDAPIN | 0 - 21 | normalerweise 18 (A4)  Pin der für den SDA des I2C Busses verwendet wird
+SCLPIN= | 0 - 21 | normalerweise 19 (A5) Pin der für den SCL des I2C Busses verwendet wird
+I2CPOWERPIN | 0- 21 | normalerweise 9 (D9). Pin der für die VCC der I2C Komponenten verwendet wird
+PCI0PIN | 0 -21, 128 | normalerweise 3 - 9, Pin der für den Interrupt PCI0 benutzt wird
+PCI0TRIGGER | 0b0000xxxx | Triggerart des Interrupts. Wird unten erklärt
+PCI1PIN | 0 -21, 128 | ein nicht benutzter externer Interrupt wird mit dem Wert 128 angezeigt
+PCI1TRIGGER |  0b0000xxxx| 
+PCI2PIN | 0 -21, 128 | 
+PCI2TRIGGER|  0b0000xxxx| 
+PCI3PIN| 0 -21, 128 | 
+PCI3TRIGGER|  0b0000xxxx| 
+USE_CRYSTAL_RTC | auto | **nicht editieren!** wird vom Sketch eingetragen
+ENCRYPTION_ENABLE | 0 oder 1 | legt fest ob das Telegramm verschlüsselt werden soll
+FEC_ENABLE | 0 oder 1 | legt fest ob Forward Error Correction eingesetzt werden soll 
+INTERLEAVER_ENABLE | 0 oder 1 | legt fest ob ein Interleaver zum Einsatz kommt. 
+EEPROM_VERSION_NUMBER | auto | **nicht editieren!** wird vom Sketch eingetragen
+SOFTWAREVERSION_NUMBER| auto | **nicht editieren!** wird vom Sketch eingetragen
+TXGAUSS_SHAPING | 0,1,2,3 | normalerweise 0. Legt fest ob und mit welchem BT Gauss Shaping vorgenommen wird (fortgeschritten)
+SERIAL_ENABLE | 0 oder 1 | normal 1. legt fest ob standardmässig der Serielle Port aktiviert sein soll 
+IS_RFM69HW | 0 oder 1 | 0 : es handelt sich um einen RFM69CW. 1: eshandelt sich um einen RFM69**H**CW
+PABOOST | 0, 1, 2, 3| normalerweise 0. nur für RFM69HCW: legt die High-Power Parameter fest (fortgeschritten)
+FDEV_STEPS | +/- | Frequenzkorrektur bei Raumtemperatur (einfache Kalibrierung des 32 MHz Quarzes des RFM)
+CHECKSUM | auto | wird beim Konfigurieren berechnet und dann eingetragen (Option 's')
 
+*) 210 ist um mit dem RFM12B Modul kompatibel zu sein. Wert kann bei diesem Modul nicht geändert werden.  
 
-RXPIN=0
-TXPIN=1
-SDAPIN=18
-SCLPIN=19
-I2CPOWERPIN=9
-PCI0PIN=7
-PCI0TRIGGER=2
-PCI1PIN=128
-PCI1TRIGGER=2
-PCI2PIN=128
-PCI2TRIGGER=2
-PCI3PIN=128
-PCI3TRIGGER=2
-USE_CRYSTAL_RTC=0
-ENCRYPTION_ENABLE=1
-FEC_ENABLE=1
-INTERLEAVER_ENABLE=1
-EEPROM_VERSION_NUMBER=3
-SOFTWAREVERSION_NUMBER=5
-TXGAUSS_SHAPING=0
-SERIAL_ENABLE=1
-IS_RFM69HW=0
-PABOOST=0
-FDEV_STEPS=0
-CHECKSUM=255
+**) Wird SENDELAY=0 gesetzt, wird der Timer deaktiviert und  der Sleep Modus des Prozessors aktiviert. Dieser wacht jetxt nur noch bei externen Interrupts ("PCI") auf. 
 
-    PCI Trigger Byte Bitbelegung
-        PCIxTrigger bits 0 and 1:
-            0bxx00 LOW
-            0bxx01 CHANGE
-            0bxx10 FALLING (normal use case)
-            0bxx11 RISING
+***) Da die LED eigentlich nicht gebraucht wird und nur zum Test einer einwandfreien Funktion dient, kann eingestellt werden ob die LED beim Versenden eines Telegramms aufleuchten soll. Eine Zahl > 0 stellt ein bei wie vielen telegrammen nach dem Start die LED noch blinken soll. Normalerweise auf 1 gesetzt. 
+
+PCI Trigger Byte Bitbelegung:
+
+PCIxTrigger bits 0 and 1:
+
+| Bitbelegung | Bedeutung |
+|---|---|
+0bxx00 | LOW
+0bxx01 | CHANGE
+0bxx10 | FALLING (Normaleinstellung)
+0bxx11 | RISING
             
-            PCIxTrigger bits 2 and 3:
-            0b00xx INPUT
-            0b01xx OUTPUT
-            0b10xx INPUT_PULLUP    
+PCIxTrigger bits 2 and 3:
+
+| Bitbelegung | Bedeutung |
+|---|---|
+0b00xx | INPUT
+0b01xx | OUTPUT
+0b10xx | INPUT_PULLUP  (Normaleinstellung)
+
+Beispiel:
+0b00001010 = INPUT_PULLUP und FALLING
+Dies ist die Normaleinstellung.
+
 ## Nachbau
 ### Vorausetzungen: Was braucht man?
-Hardware
-- USB-Seriell Adapter (FTDI oder kompatibel, CH340 geht auch aber auf das Pinning achten!)
+####Hardware
+- USB-Seriell Adapter (FTDI oder kompatibel, CH340 geht auch aber auf das Pinning achten!, und immer den Jumper oder den Schalter auf 3.3V einstellen!)
 - ISP-Programmer
 - Gateway: etwas das einen seriellen Port öffnen, lesen, schreiben, anzeigen und speichern kann (PC, Raspberry Pi,...)
+- Loetkolben und Zubehoer. Es sollte ein feiner Loetkolben für Elektronik sein, nicht gerade einer der mit Gas betrieben wird.
 
-Software
-- Python
-- Arduino IDE    
+####Software
+- Python (am Raspberry Pi bereits vorinstalliert)
+- Arduino IDE
+
+### Leiterplatten
+Die Leiterplatten bestelle ich gerne bei seeedstudio. Das dauert zwar 3 Wochen von der Bestellung bis zur Lieferung, dafür ist die Qualitaet aber sehr gut zum vernuenftigen Preis. 
+### Mechanik (Gehäuse)
+
 ## Elektronik 
 ### Schaltplan erklärt
+Das Besondere am TiNo ist dass die Schaltung wirklich nicht kompliziert ist. 
+
+Das Herzstück ist der Prozessor mit dem HF Modul. Das HF Modul kommuniziert über den SPI Bus, das sind die GPIO's D10(SS) D11(MOSI), D12(MISO) und D13(SCK). Ausserdem benutzt der Treiber einen Interrupt an GPIO D2, der ausloest wenn Daten empfangen werden. Derselbe GPIO D2 wird auch benutzt um das Ende einer Sendesequenz zu signalisieren.
+Die selben GPIO's werden vom ISP Adapter benutzt, denn die Programmierung des Prozessors erfolgt ebenso mit SPI Bus. Damit sich das HF Modul beim Programmieren über iSP nicht angesprochen fühlt, braucht es einen 10KOhm Pullup an der SS Leitung (D10). Im Sleep Mode beeinflusst dieser Widerstand den Ruhestrom nicht.
+
+Optional kann der Prozessor im Sleep Modus mit einem externen Uhrenquarz (32.768 KHz) bestückt werden. Der Quarz benoetigt noch zwei Lastkondensatoren von je 6pF oder 12pF, je nach Bauart des Quarzes. 
+
+Bei der Inbetriebnahme und zum Testen ist eine LED unglaublich hilfreich. Diese wird an GPIO D8 angeschlossen. je nach TiNo Boardausführung kann die LED in SMD und/oder bedrahteter Bauform eingesetzt werden. 
+
+Der Bequemlichkeit halber gibt es einen FTDI Adapter. Das Pinout des Adapters ist mit der Pinbelegung eines Arduino Pro Mini identisch, deshalb gibt es auch jede Menge USB-TTL Konverter im Netz mit genau diesem Pinout. 
+
+Der I2C Bus wird auf den GPIO Ports A4 (SCL) und A5(SCK) angeschlossen. I2C Bus Komponenten werden durch GPIO D9 versorgt, damit sie im Sleep Modus keinen Strom verbrauchen. Beide Leitungen des I2C Busses brauchen Pullup Widerstände. Wird anstelle des HTU21D/SHT2x Chips ein Modul verwendet, braucht man diese Widerstaende nicht da sie auf dem Modul bereits montiert sind.
+
+
 ### Stückliste
+Die Preise fuer Bauteile schwanken stark. Daher sind die angegebenen Preise nur als Anhaltspunkt zu verstehen
+
+Bauteil | Preis | Bemerkung
+ATMega328p-au | ca. 1.20 EUR |
+RFM69CW | ca. 1.50 EUR  |
+HTU21D Sensor | ca. 1.30 EUR
+Gehaeuse | ca. 0.70  - 1.20 | je nach Typ
+
+
 ### Messergebnisse
-## Leiterplatten
-## Mechanik (Gehäuse)
+
+
 
 
