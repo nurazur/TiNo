@@ -554,7 +554,6 @@ if __name__ == '__main__':
                 argcindex +=1
     atexit.register(set_normal_term)
     set_curses_term()
-    #set_normal_term()
     inputstr=""
     cmd_sent = ""
     storefile = ''
@@ -568,20 +567,7 @@ if __name__ == '__main__':
     
     #Oeffne Seriellen Port
     OpenSerialPort(port)
-    '''
-    while not port.isOpen():
-        try:
-            port.open()
-            print "ready."
-        except:
-            time.sleep(0.1)
-    '''
-    '''
-    # timeout?
-    if not port.isOpen():
-        print "cannot connect to serial port."
-        sys.exit(1)
-    '''
+
     #sent_commands = list()
     pwd_ok = False
     while 1:
