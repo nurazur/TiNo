@@ -67,20 +67,29 @@ Da gibts noch Raum für Verbesserung.
 Es wird ein Modul im Boards Manager der Arduino IDE bereitgestellt.
 #### Unkomplizierte Hardware
 ## Wie Funktionierts?
-### Softwarearchitektur
+Ein TiNo ist ein Sensor der periodisch eine Messung vornimmt und diese per Funksignal an ein Gateway uebertraegt. Dieses Gateway besteht normalerweise aus einem als Gateway (Empfaenger) konfigurierten TiNo der an einen Raspberry Pi ueber dessen seriellen Port angeschlossen ist. Das Gateway empfaengt die Funksignale, dekodiert sie und wenn die Daten sinnvoll sind werden diese an den Raspberry Pi weitergegeben. Das zwischen Gateway und Raspberry von mir verwendete Protokoll ist einfach, koennte aber im Prinzip jedem beliebigen Standard folgen, z.B. RFLink. 
+TiNos koennen auch auf externe Signale reagieren, z.B Tueroeffner Kontakte. 
+Auf dem Raspberry Pi laeuft ein Python Programm, welches die vom Gateway ankommenden Pakete aufbereitet und in eine Datenbank schreibt. Eine Web Applikation kann dann auf diese Daten zugreifen und daraus Graphiken etc machen. Dies ist aber (noch) nicht Gegenstand des TiNo Projekts. 
+
+Um eine Funkverbindung herzustellen braucht man zwei TiNos, einen als Sensor konfigurierten und einen als Gateway konfigurierten. 
+
 ### Hardwarearchitektur
-Die TiNo Boards sind so einfach wie möglich aufgebaut und haben folgende Features:
+Die TiNo Boards sind so einfach wie möglich aufgebaut:
+- direkt von einer 3V  Batterie gespeist
 - ATMega328p-au Prozessor
 - RFM69CW oder RFM69HCW oder RFM95 Modul von HopeRF
-- Footprint für einen HTU21D/SHT20/SHT21/SHT25 ist auf der Leiterplatte, erfordert aber eine fortgeschrittene Löttechnik (Lötpaste und Heizplatte)
+- Footprint für einen HTU21D/SHT20/SHT21/SHT25 ist auf der Leiterplatte
 - Anschlussmöglichkeiten für einen I2C Sensor beliebiger Wahl. 
 - Ein Batteriehalter
-- ISP (in-System-Programmin) Adapter
-- FTDI Adapter
+- ISP (in-System-Programming) Adapter, 2x3 Pin Leiste
+- FTDI Adapter, 1x6 Pin Leiste
 - je nach Board verschiedene GPIO's die man für alle möglichen digitalen Ereignisse (z.B. Tastendruck) konfigurieren kann
 - Status LED
 - auf manchen Boards ist eine optionale SMA Buchse vorgesehen (externe Antenne)
 - alle Boards sind jeweils für ein bestimmtes Gehäuse konzipiert, können aber auch anderweitig eingesetzt werden. 
+
+### Softwarearchitektur
+![](https://github.com/nurazur/TiNo/blob/master/sw_flow.jpg)
 
 ## IDE Einrichten
 - Arduino IDE starten.
@@ -164,7 +173,9 @@ Kommt keine Antwort, sendet der TiNo, nur als Debugnachricht, ein "timeout". Als
 Wenn die Prüfsumme nicht übereinstimmt:
 - Der TiNo geht direkt inden Kalibriermodus.
 
-Das EEPROMer Tool ist in Python geschrieben. Wenn man das EEPROMer Tool startet, öffnet es zunächst den seriellen Port. An einem FTDI Adapter bewirkt das, dass der angeschlossene TiNo neu startet, Dann wartet das Tool auf das 'CAL?' vom TiNo, und sendet ggf. das 'y' sofort zurück um den Kalibriermodus zu erzwingen. 
+Das EEPROMer Tool ist in Python geschrieben. Das Serielle Ports von Computer zu Computer verschieden sind gibt es eine Kommandozeilenoption fuer den Port. Die Baudrate fuer den Sender TiNo ist 4800 Baud. Fuer ein Gateway braucht man moeglichst hohe Baudraten; im mOment ist sie auf 38400 Baud festgelegt. Fuer beide Konfigurationen kann das selbe Eepromer Tool verwendet werden.
+
+Wenn man das EEPROMer Tool startet, öffnet es zunächst den seriellen Port. An einem FTDI Adapter bewirkt das, dass der angeschlossene TiNo neu startet, Dann wartet das Tool auf das 'CAL?' vom TiNo, und sendet ggf. das 'y' sofort zurück um den Kalibriermodus zu erzwingen. 
 Sobald das Tool meldet dass man im Kalibriermodus ist, muss man das Passwort eingeben. Dies ist mit dem *KEY* Parameter im Source Code identisch. Derselbe KEY wird auch zum Verschlüsseln des HF Pakets benutzt. Das EEPROM ist verschlüsselt, weil sonst ein Dieb einen TiNo ohne weiteres komplett umkonfigurieren könnte und damit wild in der Gegend herumfunken kann (oder noch Schlimmeres anrichten kann), ohne dass er das Passwort kennen müsste. 
 
 Passwort eingeben:
@@ -284,64 +295,69 @@ PCIxTrigger bits 0 and 1:
 
 | Bitbelegung | Bedeutung |
 |---|---|
-0bxx00 | LOW
-0bxx01 | CHANGE
-0bxx10 | FALLING (Normaleinstellung)
-0bxx11 | RISING
+0b0000xx00 | LOW
+0b0000xx01 | CHANGE
+0b0000xx10 | FALLING (Normaleinstellung)
+0b0000xx11 | RISING
             
 PCIxTrigger bits 2 and 3:
 
 | Bitbelegung | Bedeutung |
 |---|---|
-0b00xx | INPUT
-0b01xx | OUTPUT
-0b10xx | INPUT_PULLUP  (Normaleinstellung)
+0b000000xx | INPUT
+0b000001xx | OUTPUT
+0b000010xx | INPUT_PULLUP  (Normaleinstellung)
 
 Beispiel:
-0b00001010 = INPUT_PULLUP und FALLING
-Dies ist die Normaleinstellung.
+0b00001010 = 0x0A - 10 (Dec) = INPUT_PULLUP und FALLING
+Dies ist die Normaleinstellung. Der interne Pullup ist Teil der Entprellschaltung mit einem externen Widerstand und einem Kondensator.
 
+---> Bild mit Entprellungsschaltung <----
 ## Nachbau
 ### Vorausetzungen: Was braucht man?
-####Hardware
+#### Hardware
 - USB-Seriell Adapter (FTDI oder kompatibel, CH340 geht auch aber auf das Pinning achten!, und immer den Jumper oder den Schalter auf 3.3V einstellen!)
 - ISP-Programmer
 - Gateway: etwas das einen seriellen Port öffnen, lesen, schreiben, anzeigen und speichern kann (PC, Raspberry Pi,...)
-- Loetkolben und Zubehoer. Es sollte ein feiner Loetkolben für Elektronik sein, nicht gerade einer der mit Gas betrieben wird.
+- Lötkolben und Zubehör. Es sollte ein feiner Lötkolben für Elektronik sein, nicht gerade einer der mit Gas betrieben wird.
 
-####Software
+#### Software
 - Python (am Raspberry Pi bereits vorinstalliert)
 - Arduino IDE
 
 ### Leiterplatten
-Die Leiterplatten bestelle ich gerne bei seeedstudio. Das dauert zwar 3 Wochen von der Bestellung bis zur Lieferung, dafür ist die Qualitaet aber sehr gut zum vernuenftigen Preis. 
+Die Leiterplatten bestelle ich gerne bei seeedstudio. Das dauert zwar 3 Wochen von der Bestellung bis zur Lieferung, dafür ist die Qualität aber sehr gut zum vernünftigen Preis. 
 ### Mechanik (Gehäuse)
 
 ## Elektronik 
 ### Schaltplan erklärt
 Das Besondere am TiNo ist dass die Schaltung wirklich nicht kompliziert ist. 
 
-Das Herzstück ist der Prozessor mit dem HF Modul. Das HF Modul kommuniziert über den SPI Bus, das sind die GPIO's D10(SS) D11(MOSI), D12(MISO) und D13(SCK). Ausserdem benutzt der Treiber einen Interrupt an GPIO D2, der ausloest wenn Daten empfangen werden. Derselbe GPIO D2 wird auch benutzt um das Ende einer Sendesequenz zu signalisieren.
+Das Herzstück ist der Prozessor mit dem HF Modul. Das HF Modul kommuniziert über den SPI Bus, das sind die GPIO's D10(SS) D11(MOSI), D12(MISO) und D13(SCK). Ausserdem benutzt der Treiber einen Interrupt an GPIO D2, der auslöst wenn Daten empfangen werden. Derselbe GPIO D2 wird auch benutzt um das Ende einer Sendesequenz zu signalisieren.
 Die selben GPIO's werden vom ISP Adapter benutzt, denn die Programmierung des Prozessors erfolgt ebenso mit SPI Bus. Damit sich das HF Modul beim Programmieren über iSP nicht angesprochen fühlt, braucht es einen 10KOhm Pullup an der SS Leitung (D10). Im Sleep Mode beeinflusst dieser Widerstand den Ruhestrom nicht.
 
-Optional kann der Prozessor im Sleep Modus mit einem externen Uhrenquarz (32.768 KHz) bestückt werden. Der Quarz benoetigt noch zwei Lastkondensatoren von je 6pF oder 12pF, je nach Bauart des Quarzes. 
+Optional kann der Prozessor im Sleep Modus mit einem externen Uhrenquarz (32.768 KHz) bestückt werden. Der Quarz benötigt noch zwei Lastkondensatoren von je 6pF oder 12pF, je nach Bauart des Quarzes. 
 
 Bei der Inbetriebnahme und zum Testen ist eine LED unglaublich hilfreich. Diese wird an GPIO D8 angeschlossen. je nach TiNo Boardausführung kann die LED in SMD und/oder bedrahteter Bauform eingesetzt werden. 
 
 Der Bequemlichkeit halber gibt es einen FTDI Adapter. Das Pinout des Adapters ist mit der Pinbelegung eines Arduino Pro Mini identisch, deshalb gibt es auch jede Menge USB-TTL Konverter im Netz mit genau diesem Pinout. 
 
-Der I2C Bus wird auf den GPIO Ports A4 (SCL) und A5(SCK) angeschlossen. I2C Bus Komponenten werden durch GPIO D9 versorgt, damit sie im Sleep Modus keinen Strom verbrauchen. Beide Leitungen des I2C Busses brauchen Pullup Widerstände. Wird anstelle des HTU21D/SHT2x Chips ein Modul verwendet, braucht man diese Widerstaende nicht da sie auf dem Modul bereits montiert sind.
+Der I2C Bus wird auf den GPIO Ports A4 (SCL) und A5(SCK) angeschlossen. I2C Bus Komponenten werden durch GPIO D9 versorgt, damit sie im Sleep Modus keinen Strom verbrauchen. Beide Leitungen des I2C Busses brauchen Pullup Widerstände. Wird anstelle des HTU21D/SHT2x Chips ein Modul verwendet, braucht man diese Widerstände nicht da sie auf dem Modul bereits montiert sind.
 
 
 ### Stückliste
-Die Preise fuer Bauteile schwanken stark. Daher sind die angegebenen Preise nur als Anhaltspunkt zu verstehen
+Die Preise für Bauteile schwanken stark. Daher sind die angegebenen Preise nur als Anhaltspunkt zu verstehen
 
-Bauteil | Preis | Bemerkung
+| Bauteil | Preis | Bemerkung |
+|---|---|----|
 ATMega328p-au | ca. 1.20 EUR |
 RFM69CW | ca. 1.50 EUR  |
-HTU21D Sensor | ca. 1.30 EUR
-Gehaeuse | ca. 0.70  - 1.20 | je nach Typ
+HTU21D Sensor | ca. 1.30 EUR | IC's im DFN-6 Gehaeuse kosten fast das selbe (ausser im 50er Pack)
+Gehäuse | ca. 0.70  - 1.20 | je nach Typ
+Batteriehalter | 0.05 |
+Kleinteile |0.05 | Widerstaende, Kondensatoren, LED in SMD Bauform *)
 
+Ich habe darauf geachtet dass man nicht allzu viele verschiedene Werte benoetigt. 
 
 ### Messergebnisse
 
