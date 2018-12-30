@@ -1,5 +1,6 @@
 # TiNo
 ![](https://github.com/nurazur/TiNo/blob/master/matchbox.jpg)
+
 "**TI**ny **NO**de" : Batteriebetriebener Funksensor oder Funk-Aktor. 
 Ziel dieses Projekts ist die Entwicklung schnurloser Funk Sensoren, 
     die über Batterien versorgt werden und z.B. mit dem Raspberry Pi kommunizieren.
@@ -19,11 +20,19 @@ Anwesenheitssensoren, Magnetschalter, Erschütterungs-Sensoren, Feuchtigkeitsmess
 Die Leiterplatten passen zu im Handel erhältlichen PVC Gehäusen, welche in etwa die Grösse einer Streichholzschachtel haben. Die verwendeten Komponenten sind am Markt eingeführt, jederzeit erhältlich und
 dadurch kostengünstig zu beschaffen. 
 
+# Warum TiNo?
+- kompakte Bauform (Streichholzschachtel).
+- Leiterplatten speziell fuer das Gehaeuse.
+- Schaltung konsequent auf mimimalem Stromverbrauch optimiert. Batterielaufzeit 5 Jahre oder mehr.
+- Konzept der minimalen Kosten. Keine teuren Features die kaum einer braucht.
+- Bidirektionale sichere Funkverbindung. 
+
+
 # Features
 ## Allgemein
 - Spannung von ca. 1.8V bis 3.6V
 - Betrieb mit CR2032 Zelle bis zu 5 Jahren Lebensdauer
-- verschiedene Leiterplatten passend zum im Handel erältlichen Gehäusen 
+- verschiedene Leiterplatten passend zum im Handel erhältlichen Gehäusen 
     
     
 ## Radio
@@ -62,10 +71,10 @@ dadurch kostengünstig zu beschaffen.
 - Open Source Software C++
 - Software kann einfach individuell angepasst werden
 - Programmierung mit Arduino IDE
-- Konfiguration der Nodes über serielles Interface (FTDA Adapter)
+- Konfiguration der Nodes über serielles Interface (FTDI Adapter)
 - Konfigurations- und Kalibrierdaten im EEPROM gespeichert.
 - EEPROM verschlüsselt
 - Flashen
   - mit ISP Adapter oder 
-  - seriell mit FTDA Adapter über Bootloader
+  - seriell mit FTDI Adapter über Bootloader
 - bis zu 4 externe Interrupts (z.B. 4 Tasten) konfigurierbar

@@ -67,9 +67,9 @@ Da gibts noch Raum für Verbesserung.
 Es wird ein Modul im Boards Manager der Arduino IDE bereitgestellt.
 #### Unkomplizierte Hardware
 ## Wie Funktionierts?
-Ein TiNo ist ein Sensor der periodisch eine Messung vornimmt und diese per Funksignal an ein Gateway uebertraegt. Dieses Gateway besteht normalerweise aus einem als Gateway (Empfaenger) konfigurierten TiNo der an einen Raspberry Pi ueber dessen seriellen Port angeschlossen ist. Das Gateway empfaengt die Funksignale, dekodiert sie und wenn die Daten sinnvoll sind werden diese an den Raspberry Pi weitergegeben. Das zwischen Gateway und Raspberry von mir verwendete Protokoll ist einfach, koennte aber im Prinzip jedem beliebigen Standard folgen, z.B. RFLink. 
-TiNos koennen auch auf externe Signale reagieren, z.B Tueroeffner Kontakte. 
-Auf dem Raspberry Pi laeuft ein Python Programm, welches die vom Gateway ankommenden Pakete aufbereitet und in eine Datenbank schreibt. Eine Web Applikation kann dann auf diese Daten zugreifen und daraus Graphiken etc machen. Dies ist aber (noch) nicht Gegenstand des TiNo Projekts. 
+Ein TiNo ist ein Sensor der periodisch eine Messung vornimmt und diese per Funksignal an ein Gateway ueberträgt.  Dieses Gateway besteht normalerweise aus einem als Empfänger konfigurierten TiNo der an einen Raspberry Pi ueber dessen seriellen Port angeschlossen ist. Das Gateway empfängt die Funksignale, dekodiert sie und wenn die Daten sinnvoll sind werden diese an den Raspberry Pi weitergegeben. Ausserdem quittiert das Gateway die Nachricht auf Aufforderung. Das zwischen Gateway und Raspberry von mir verwendete Protokoll ist einfach, koennte aber im Prinzip jedem beliebigen Standard folgen, z.B. RFLink. 
+TiNos koennen standardmässig auch auf externe Signale reagieren, z.B Tueroeffner Kontakte. 
+Auf dem Raspberry Pi läuft ein Python Programm, welches die vom Gateway ankommenden Pakete aufbereitet und in eine Datenbank schreibt. Eine Web Applikation kann dann auf diese Daten zugreifen und daraus Graphiken etc machen. Dies ist aber (noch) nicht Gegenstand des TiNo Projekts. 
 
 Um eine Funkverbindung herzustellen braucht man zwei TiNos, einen als Sensor konfigurierten und einen als Gateway konfigurierten. 
 
@@ -89,7 +89,8 @@ Die TiNo Boards sind so einfach wie möglich aufgebaut:
 - alle Boards sind jeweils für ein bestimmtes Gehäuse konzipiert, können aber auch anderweitig eingesetzt werden. 
 
 ### Softwarearchitektur
-![](https://github.com/nurazur/TiNo/blob/master/sw_flow.jpg)
+![TiNo Sensor Software Architektur](https://github.com/nurazur/TiNo/blob/master/sw_flow.jpg)
+
 
 ## IDE Einrichten
 - Arduino IDE starten.
@@ -173,7 +174,7 @@ Kommt keine Antwort, sendet der TiNo, nur als Debugnachricht, ein "timeout". Als
 Wenn die Prüfsumme nicht übereinstimmt:
 - Der TiNo geht direkt inden Kalibriermodus.
 
-Das EEPROMer Tool ist in Python geschrieben. Das Serielle Ports von Computer zu Computer verschieden sind gibt es eine Kommandozeilenoption fuer den Port. Die Baudrate fuer den Sender TiNo ist 4800 Baud. Fuer ein Gateway braucht man moeglichst hohe Baudraten; im mOment ist sie auf 38400 Baud festgelegt. Fuer beide Konfigurationen kann das selbe Eepromer Tool verwendet werden.
+Das EEPROMer Tool ist in Python geschrieben. Da serielle Ports von Computer zu Computer verschieden sind gibt es eine Kommandozeilenoption für den Port. Die Baudrate für den Sender TiNo ist 4800 Baud. Für ein Gateway braucht man moeglichst hohe Baudraten; im Moment ist sie auf 38400 Baud festgelegt. Für beide Konfigurationen kann das selbe Eepromer Tool verwendet werden.
 
 Wenn man das EEPROMer Tool startet, öffnet es zunächst den seriellen Port. An einem FTDI Adapter bewirkt das, dass der angeschlossene TiNo neu startet, Dann wartet das Tool auf das 'CAL?' vom TiNo, und sendet ggf. das 'y' sofort zurück um den Kalibriermodus zu erzwingen. 
 Sobald das Tool meldet dass man im Kalibriermodus ist, muss man das Passwort eingeben. Dies ist mit dem *KEY* Parameter im Source Code identisch. Derselbe KEY wird auch zum Verschlüsseln des HF Pakets benutzt. Das EEPROM ist verschlüsselt, weil sonst ein Dieb einen TiNo ohne weiteres komplett umkonfigurieren könnte und damit wild in der Gegend herumfunken kann (oder noch Schlimmeres anrichten kann), ohne dass er das Passwort kennen müsste. 
@@ -314,11 +315,12 @@ Dies ist die Normaleinstellung. Der interne Pullup ist Teil der Entprellschaltun
 
 ---> Bild mit Entprellungsschaltung <----
 ## Nachbau
+Aufgrund der überschaubaren Stückliste und des einfachen Aufbaus ist der Nachbau wirklich kinderleicht, ein wenig Loetfertigkeit vorausgesetzt. 
 ### Vorausetzungen: Was braucht man?
 #### Hardware
 - USB-Seriell Adapter (FTDI oder kompatibel, CH340 geht auch aber auf das Pinning achten!, und immer den Jumper oder den Schalter auf 3.3V einstellen!)
 - ISP-Programmer
-- Gateway: etwas das einen seriellen Port öffnen, lesen, schreiben, anzeigen und speichern kann (PC, Raspberry Pi,...)
+- Gateway: etwas das einen seriellen Port öffnen, lesen, schreiben, anzeigen und speichern kann (PC, Raspberry Pi, ESP8266,...)
 - Lötkolben und Zubehör. Es sollte ein feiner Lötkolben für Elektronik sein, nicht gerade einer der mit Gas betrieben wird.
 
 #### Software
@@ -326,9 +328,11 @@ Dies ist die Normaleinstellung. Der interne Pullup ist Teil der Entprellschaltun
 - Arduino IDE
 
 ### Leiterplatten
-Die Leiterplatten bestelle ich gerne bei seeedstudio. Das dauert zwar 3 Wochen von der Bestellung bis zur Lieferung, dafür ist die Qualität aber sehr gut zum vernünftigen Preis. 
+Die Leiterplatten bestelle ich gerne bei [seeedstudio](https://www.seeedstudio.com/fusion_pcb.html). Das dauert zwar 3 Wochen von der Bestellung bis zur Lieferung, dafür ist die Qualität aber sehr gut zum vernünftigen Preis. 
 ### Mechanik (Gehäuse)
-
+ich stelle hier zwei verschiedene Leiterplattendesigns vor:
+Die erste Leiterplatte verwendet die RFM69HCW bzw. RFM95 Pinbelegung und ist für das [Strapubox SP2043 Gehäuse](http://strapubox.de/modules/uploadmanager11/admin/index.php?action=file_download&file_id=163&location_id=0) konzipiert. Damit kann man im Prinzip auch einen LoRa Node verwirklichen, entsprechende Software gibt es passend im Netz.
+Die zweite Leiterplatte ist mit der Pinbelegung des RFM69CW (kompatibel mit RFM12B) unf für das [Strapubox MG307 Gehäuse](https://www.elv.de/strapubox-kunststoff-gehaeuse-mg-307-abs-45-x-30-x-22-mm-grau.html). Dies ist die kostensparendste Variante, da das Gehäuse weniger als 1 EUR kostet und auch der RFM69CW deutlich günstiger zu haben ist als ein RFM69HCW. 
 ## Elektronik 
 ### Schaltplan erklärt
 Das Besondere am TiNo ist dass die Schaltung wirklich nicht kompliziert ist. 
@@ -352,12 +356,12 @@ Die Preise für Bauteile schwanken stark. Daher sind die angegebenen Preise nur 
 |---|---|----|
 ATMega328p-au | ca. 1.20 EUR |
 RFM69CW | ca. 1.50 EUR  |
-HTU21D Sensor | ca. 1.30 EUR | IC's im DFN-6 Gehaeuse kosten fast das selbe (ausser im 50er Pack)
+HTU21D Sensor | ca. 1.30 EUR | IC's im DFN-6 Gehäuse kosten fast das selbe (ausser im 50er Pack)
 Gehäuse | ca. 0.70  - 1.20 | je nach Typ
 Batteriehalter | 0.05 |
-Kleinteile |0.05 | Widerstaende, Kondensatoren, LED in SMD Bauform *)
+Kleinteile |0.05 | Widerstände, Kondensatoren, LED in SMD Bauform *)
 
-Ich habe darauf geachtet dass man nicht allzu viele verschiedene Werte benoetigt. 
+*)Ich habe darauf geachtet dass man nicht allzu viele verschiedene Werte benoetigt. 
 
 ### Messergebnisse
 
