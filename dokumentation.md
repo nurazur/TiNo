@@ -36,39 +36,39 @@ Die Idee zu dieser Entwicklung wurde bei mir durch ein Projekt im [deutschen Ras
 Ich möchte mich an dieser Stelle nocheinmal herzlich bei allen Beteiligten für die harte Arbeit die dahinter steckt bedanken. 
 Da wurde mit viel Energie und Enthusiasmus ein System zum Senden und Empfangen von Sensordaten "zusammengebaut", was zur Entwicklung der "TinyTx4" und "TinyRX3" Platinen auf der Basis des ATtiny84a Prozessors geführt hat.
 
-Für Ein Endprodukt eignen sich die TinyTx Platinen leider nicht, aber als Experimentier- und Lernplatform haben sie mir unschätzbare Dienste geleistet. Zunächst ging es mir um technische Verbesserungen: Optimierung des Link-Budgets, ein binäres, wesentlich kürzeres Protokoll, Verbesserungen beim Stromverbrauch und beim Ruhestrom, ich experimentierte HF-seitig unter anderem mit FEC (Forward Error Correction), Interleavern, Baud Raten und Filterbandbreiten, und schliesslich war klar: ein anderer Prozessor muss her, der ATtiny mit seinen 8kB Flash kann nicht mithalten.
+Zunächst ging es mir um technische Verbesserungen: Optimierung des Link-Budgets, ein binäres, wesentlich kürzeres Protokoll, Verbesserungen beim Stromverbrauch und beim Ruhestrom, ich experimentierte HF-seitig unter anderem mit FEC (Forward Error Correction), Interleavern, Baud Raten und Filterbandbreiten, und schliesslich war klar: ein anderer Prozessor muss her, der ATtiny mit seinen 8kB Flash kann nicht mithalten.
 
 Ich begann von vorne. Bei der Gelegenheit habe ich die TiNo Platinen an das Gehäuse und ihren Zweck angepasst und nicht umgekehrt. 
 Herausgekommen ist ein in allen Parametern optimierter Funksensor in der Grösse einer Streichholzschachtel, welchen ich TINO = **TI**ny **NO**de nenne. Später kann man daraus dann das **TI**ny **N**etw**O**rk machen, denn auf der Softwareseite, speziell am Gateway gibt es noch unendlich viel Arbeit.
-Auch das erklärte Ziel der Einfachheit des Systems ist noch nicht erreicht. Das Einrichten der IDE, das Flashen und das Individualisieren der jeweiligen TiNos soll in Zukunft in einem einzigen Schritt erfolgen.
+
 ## Das Konzept
 ### Minimale Kosten:
 Momentan ist die Auswahl des ATMega328 Processors mit dem RFM69CW HF-Modul die kostengünstigste Variante. Weiterhin kann auf LDO's oder DC-DC Konverter verzichtet werden, da alle Module direkt von einer 3V CR2032 Zelle, zwei AAA Batterien oder zwei AA Batterien betrieben werden können. Weitere Kosten können durch verkleinern der Leiterplatte erzielt werden, so kann man sog. Nutzen (Panels) erzeugen bei denen das selbe Layout 4/6/8 mal auf eine Leiterplatte gebracht wird. 
 ### minimale Grösse
 Aufgrund der verwendeten Frequenzen kann man die Baugrösse eines Sensors nicht beliebig verkleinern ohne grosse Zugeständnisse an die Performance zu machen. 
-Mit Platinenabmessungen von ca. 35 x 50 mm habe ich im 868MHz ISM Band gute Erfahrungen gemacht. Im 433MHz ISM Band funktioniert das auch durchaus zufriedenstellend. 
+Mit Platinenabmessungen von ca. 35 x 50 mm habe ich im 868MHz ISM Band gute Erfahrungen gemacht. Im 433MHz ISM Band funktioniert das ebenfalls durchaus zufriedenstellend. 
 ### minimaler Stromverbrauch
 Konsequente Umsetzung der Möglichkeiten des ATMega328 Prozessors. Optimierung der HF Parameter. Optimierung der Stromversorgung. Verwendung stromsparender Sensoren.
 ### maximale Batterielebensdauer
 Die Lebensdauer der Batterie hängt vom Einsatzfall ab. Sie setzt sich im Wesentlichen aus den vier folgenden Komponenten zusammen: 
-1. der Batterie selbst. Der TiNo hat einen CR2032 Knopfzellenhalter eingebaut. Eine CR2032 hat geschätzt 200mAh nutzbare Kapazität.
-2. der Energie die bei einem Sendeimpuls verbraucht wird. In diesem Projekt habe ich die Dauer des Impulses sowie seine Leistung optimiert. 
-3. dem Ruhestrom. Auch der Ruhestrom wurde optimiert. Mit externem Uhrenquarz 32.678MHz arbeitet der Prozessor im Sleep Modus wie eine RTC (Real Time Clock), ich habe Ruheströme von 1.2µA gemessen. Ohne den Uhrenquarz verwendet man den internen RC Oszillator, da messe ich ca. 4µA, das ist aber immer noch ein sehr guter Wert.
-4. der Anzahl der Sendepulse pro Zeit. bei einer Rate von einem Puls pro Minute überwiegt der Stromverbrauch der Sendepulse. Bei einer Rate von einem Puls pro Stunde überwiegt der Stromverbrauch durch den Ruhestrom. 
+1. die Batterie. Der TiNo hat einen CR2032 Knopfzellenhalter eingebaut. Eine CR2032 hat geschätzt 200mAh nutzbare Kapazität.
+2. die Energie die bei einem Sendeimpuls verbraucht wird. In diesem Projekt habe ich die Dauer des Impulses sowie seine Leistung optimiert. 
+3. der Ruhestrom. Auch der Ruhestrom wurde optimiert. Mit externem Uhrenquarz 32.678MHz arbeitet der Prozessor im Sleep Modus wie eine RTC (Real Time Clock), ich habe Ruheströme von 1.2µA gemessen. Ohne den Uhrenquarz verwendet man den internen RC Oszillator, da messe ich ca. 4µA, das ist aber immer noch ein sehr guter Wert.
+4. die Anzahl der Sendepulse pro Zeit. bei einer Rate von einem Puls pro Minute überwiegt der Stromverbrauch der Sendepulse. Bei einer Rate von einem Puls pro Stunde überwiegt der Stromverbrauch durch den Ruhestrom. 
 Bei einem typischen Temperatur/Luftfeuchte Sensor, der alle 30 Minuten eine Messung sendet kann eine CR2032 Zelle 5 Jahre oder länger halten.
-[In meinem Blog](https://nurazur.wordpress.com/2018/02/25/batterielebensdauer-eines-tx-nodes-verlaengern-mit-einem-32-768-khz-quarz/) gibts das Ganze sehr audferlich erklärt.
+[In meinem Blog](https://nurazur.wordpress.com/2018/02/25/batterielebensdauer-eines-tx-nodes-verlaengern-mit-einem-32-768-khz-quarz/) gibts das Ganze sehr ausführlich erklärt.
 ### maximale Reichweite
 Optimierung des Layouts. Optimierung der HF Parameter. Dadurch verringert sich die Eingangsempfindlichkeit drastisch. Optimierung des HF Treibers um maximale Sendeleistung zu erreichen.
 ### maximale Sicherheit
-Das Sendeprotokoll ist verschlüsselt. Der Schlüssel kann nicht aus dem Flash gelesen werden wenn das Basisband versperrt wurde. Um zu  verhindern dass ein einmal aufgezeichnetes Signal bei Wiederholung etwas auslöst wird ein "rolling code" verwendet, der sicherstellt dass jedes Protokoll "einmalig" ist.
+Das Sendeprotokoll ist verschlüsselt. Der Schlüssel kann nicht aus dem Flash gelesen werden wenn das Basisband versperrt wurde. Um zu verhindern dass ein einmal aufgezeichnetes Signal bei Wiederholung etwas auslöst wird ein "rolling code" verwendet, der sicherstellt dass jedes Protokoll "einmalig" ist.
 ### Einfachheit
 Da gibts noch Raum für Verbesserung.
 #### Plug&Play Firmware
 Es wird ein Modul im Boards Manager der Arduino IDE bereitgestellt.
 #### Unkomplizierte Hardware
 ## Wie Funktionierts?
-Ein TiNo ist ein Sensor der periodisch eine Messung vornimmt und diese per Funksignal an ein Gateway ueberträgt.  Dieses Gateway besteht normalerweise aus einem als Empfänger konfigurierten TiNo der an einen Raspberry Pi ueber dessen seriellen Port angeschlossen ist. Das Gateway empfängt die Funksignale, dekodiert sie und wenn die Daten sinnvoll sind werden diese an den Raspberry Pi weitergegeben. Ausserdem quittiert das Gateway die Nachricht auf Aufforderung. Das zwischen Gateway und Raspberry von mir verwendete Protokoll ist einfach, koennte aber im Prinzip jedem beliebigen Standard folgen, z.B. RFLink. 
-TiNos koennen standardmässig auch auf externe Signale reagieren, z.B Tueroeffner Kontakte. 
+Ein TiNo ist ein Sensor der periodisch eine Messung vornimmt und diese per Funksignal an ein Gateway überträgt.  Dieses Gateway besteht normalerweise aus einem als Empfänger konfigurierten TiNo der an einen Raspberry Pi über dessen seriellen Port angeschlossen ist. Das Gateway empfängt die Funksignale, dekodiert sie und wenn die Daten sinnvoll sind werden diese an den Raspberry Pi weitergegeben. Ausserdem quittiert das Gateway die Nachricht auf Aufforderung. Das zwischen Gateway und Raspberry von mir verwendete Protokoll ist einfach, könnte aber im Prinzip jedem beliebigen Standard folgen, z.B. RFLink. 
+TiNos können standardmässig auch auf externe Signale reagieren, z.B Tueröffner Kontakte. 
 Auf dem Raspberry Pi läuft ein Python Programm, welches die vom Gateway ankommenden Pakete aufbereitet und in eine Datenbank schreibt. Eine Web Applikation kann dann auf diese Daten zugreifen und daraus Graphiken etc machen. Dies ist aber (noch) nicht Gegenstand des TiNo Projekts. 
 
 Um eine Funkverbindung herzustellen braucht man zwei TiNos, einen als Sensor konfigurierten und einen als Gateway konfigurierten. 
@@ -130,12 +130,12 @@ Folgende Bibliotheken braucht man zusätzlich zur Installation des TiNo Boards:
 Diese Bibliotheken sind nicht mit im TiNo Package enthalten (derzeit). *HTU21D_SoftwareWire* und *SHT3x_SoftwareWire* sind im TiNo Github Repository, müssen aber von Hand in das library Verzeichnis übertragen werden. Der Gedanke dahinter ist dass man die Bibliotheken ja auch für was anderes als TiNo verwenden kann.
 
 ## Kompilieren und Flashen
-Dazu braucht man, zumindest kurzfristig, einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP)
-Zum Flashen der Boards gibt es zwei Konzepte:
+Dazu braucht man, zumindest kurzfristig, einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP). 
+Zum Flashen der Boards gibt es zwei Konzepte. In beiden Fällen braucht man einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP).
+Diesen kann man sich leicht mit einem Arduino UNO oder einem Arduino Nano selbst herstellen. Die Alternativen sind:
 1. Einmalig mit dem ISP Programmer auf das Board einen Bootloader flashen. Der eigentliche Sketch wird dann über das serielle Interface des Boards geladen. Vorteil: Während der Entwicklungsphase kann man mit dem selben Interface flashen und testen, ohne das Interface wechseln zu müssen.
 2. Den Sketch direkt ohne Bootloader mit einem ISP Adapter flashen. Vorteil: In der Produktionsphase können Nodes in einem einzigen Arbeitsschritt geflasht werden. Da kein Bootloader vorhanden ist, hat man auch mehr Flash Speicher zur Verfügung.
-In beiden Fällen braucht man einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP).
-Diesen kann man sich leicht mit einem Arduino UNO oder einem Arduino Nano selbst herstellen. 
+
 ### mit FTDI und USB-Seriell Adapter
 Einmaliger Vorgang, wenn man das Board zum ersten mal startet:
 - Wenn man einen Arduino (z.B.UNO) als Programmer benutzt: Bei `Tools->Programmer` "Arduino as ISP" auswählen (nicht "ArduinoISP"!)
@@ -168,7 +168,7 @@ Nach dem Flashen sind die Nodes und die Gateways noch nicht betriebsbereit (leid
 nach dem Start eines TiNos liest das TiNo Board das EEPROM. Da die Daten verschlüsselt sind, werden sie zunächst entschlüsselt und die Prüfsumme gebildet. 
 
 Wenn die Prüfsumme mit der aus dem EEPROM gelesenen übereinstimmt:
-- Ueber den seriellen Port wird der String "CAL?" gesendet. Wenn innerhalb von 250ms ein 'y' zurückkommt, geht der TiNo in den Kalibriermodus. 
+- über den seriellen Port wird der String "CAL?" gesendet. Wenn innerhalb von 250ms ein 'y' zurückkommt, geht der TiNo in den Kalibriermodus. 
 Kommt keine Antwort, sendet der TiNo, nur als Debugnachricht, ein "timeout". Also nicht wundern über das Timeout, das zeigt an dass alles in Ordnung ist. Man sieht es allerdings nur wenn man das TiNo Board direkt mit einem Terminalprogram (z.B. minicom oder TeraTerm) verbindet.
 
 Wenn die Prüfsumme nicht übereinstimmt:
@@ -230,7 +230,7 @@ eine Kommandozeile sieht dann beispielsweise so aus:
 
 `python eepromer_win_v007.py COM8 38400 -pwd -cp,receive_eeprom.cfg -ls -cs -x -q`
 
-In diesem Fall verbindet sich das Eepromer Tool mit dem TiNo Board auf COM8, 38400 Baud und arbeitet dann die liste der Optionen in der Reihenfolge ab, also:
+In diesem Fall verbindet sich das Eepromer Tool mit dem TiNo Board auf COM8, 38400 Baud und arbeitet dann die Liste der Optionen in der Reihenfolge ab, also:
 1. `-pwd` sendet das im Programm hinterlegte Passwort an da TiNo Board
 2. `-cp,receive_eeprom.cfg` kopiert den Inhalt der Datei `receive_eeprom.cfg` vom PC auf das TiNo Board
 2. `-ls` listet den Inhalt des EEPROMs.
@@ -253,7 +253,7 @@ VCCatCAL | typ. 3300 mV | Wert der Versorgungsspannung in mV zum Zeitpunkt der K
 VCCADC_CAL | typ. 350 | der ADC Wert der bei Anliegen von VCCatCAL kalibriert wurde
 SENDDELAY | 0 - 65535 | Zeit in Sekunden/8 die zwischen zwei Messungen vergehen soll (Maximal 145 Stunden, ca 6 Tage). Bei einem Wert von 0 wird der RTC timer deaktiviert. **)
 FREQBAND | 43, 86 | 43 für das 433MHz Band, 86 für das 868MHz Band
-FREQ_CENTER | z.B. 865.000 | die genaü Mittenfrequenz des Senders (muss für das gesamte Netzwerk idsentisch sein)
+FREQ_CENTER | z.B. 865.000 | die genaue Mittenfrequenz des Senders (muss für das gesamte Netzwerk identisch sein)
 TXPOWER | 0-31 | 31 = maximale Sendeleistung, 0 = minimale Sendeleistung in 1dB Schritten
 REQUESTACK | 0 oder 1 | legt fest ob ein empfangenes Telegramm quittiert werden soll (1) oder nicht (0)
 LEDCOUNT | 0 - 255 | legt fest ob ein gesendetes Telegramm von einem kurzen Blinken der LED begleitet wird und wie oft ***)
@@ -286,9 +286,9 @@ CHECKSUM | auto | wird beim Konfigurieren berechnet und dann eingetragen (Option
 
 *) 210 ist um mit dem RFM12B Modul kompatibel zu sein. Wert kann bei diesem Modul nicht geändert werden.  
 
-**) Wird SENDELAY=0 gesetzt, wird der Timer deaktiviert und  der Sleep Modus des Prozessors aktiviert. Dieser wacht jetxt nur noch bei externen Interrupts ("PCI") auf. 
+**) Wird SENDELAY=0 gesetzt, wird der Timer deaktiviert und  der Sleep Modus des Prozessors aktiviert. Dieser wacht jetzt nur noch bei externen Interrupts ("PCI") auf. 
 
-***) Da die LED eigentlich nicht gebraucht wird und nur zum Test einer einwandfreien Funktion dient, kann eingestellt werden ob die LED beim Versenden eines Telegramms aufleuchten soll. Eine Zahl > 0 stellt ein bei wie vielen telegrammen nach dem Start die LED noch blinken soll. Normalerweise auf 1 gesetzt. 
+***) Da die LED eigentlich nicht gebraucht wird und nur zum Test einer einwandfreien Funktion dient, kann eingestellt werden ob die LED beim Versenden eines Telegramms aufleuchten soll. Eine Zahl > 0 stellt ein bei wie vielen Telegrammen nach dem Start die LED noch blinken soll. Normalerweise auf 1 gesetzt. 
 
 PCI Trigger Byte Bitbelegung:
 
@@ -315,7 +315,7 @@ Dies ist die Normaleinstellung. Der interne Pullup ist Teil der Entprellschaltun
 
 ---> Bild mit Entprellungsschaltung <----
 ## Nachbau
-Aufgrund der überschaubaren Stückliste und des einfachen Aufbaus ist der Nachbau wirklich kinderleicht, ein wenig Loetfertigkeit vorausgesetzt. 
+Aufgrund der überschaubaren Stückliste und des einfachen Aufbaus ist der Nachbau wirklich kinderleicht, ein wenig Lötfertigkeit vorausgesetzt. 
 ### Vorausetzungen: Was braucht man?
 #### Hardware
 - USB-Seriell Adapter (FTDI oder kompatibel, CH340 geht auch aber auf das Pinning achten!, und immer den Jumper oder den Schalter auf 3.3V einstellen!)
@@ -332,7 +332,7 @@ Die Leiterplatten bestelle ich gerne bei [seeedstudio](https://www.seeedstudio.c
 ### Mechanik (Gehäuse)
 ich stelle hier zwei verschiedene Leiterplattendesigns vor:
 Die erste Leiterplatte verwendet die RFM69HCW bzw. RFM95 Pinbelegung und ist für das [Strapubox SP2043 Gehäuse](http://strapubox.de/modules/uploadmanager11/admin/index.php?action=file_download&file_id=163&location_id=0) konzipiert. Damit kann man im Prinzip auch einen LoRa Node verwirklichen, entsprechende Software gibt es passend im Netz.
-Die zweite Leiterplatte ist mit der Pinbelegung des RFM69CW (kompatibel mit RFM12B) unf für das [Strapubox MG307 Gehäuse](https://www.elv.de/strapubox-kunststoff-gehaeuse-mg-307-abs-45-x-30-x-22-mm-grau.html). Dies ist die kostensparendste Variante, da das Gehäuse weniger als 1 EUR kostet und auch der RFM69CW deutlich günstiger zu haben ist als ein RFM69HCW. 
+Die zweite Leiterplatte ist mit der Pinbelegung des RFM69CW (kompatibel mit RFM12B) und für das [Strapubox MG307 Gehäuse](https://www.elv.de/strapubox-kunststoff-gehaeuse-mg-307-abs-45-x-30-x-22-mm-grau.html). Dies ist die kostensparendste Variante, da das Gehäuse weniger als 1 EUR kostet und auch der RFM69CW deutlich günstiger zu haben ist als ein RFM69HCW. 
 ## Elektronik 
 ### Schaltplan erklärt
 Das Besondere am TiNo ist dass die Schaltung wirklich nicht kompliziert ist. 
