@@ -328,7 +328,7 @@ Aufgrund der überschaubaren Stückliste und des einfachen Aufbaus ist der Nachb
 - Arduino IDE
 
 ### Leiterplatten
-Die Leiterplatten bestelle ich gerne bei [seeedstudio](https://www.seeedstudio.com/fusion_pcb.html). Das dauert zwar 3 Wochen von der Bestellung bis zur Lieferung, dafür ist die Qualität aber sehr gut zum vernünftigen Preis. 
+Die Leiterplatten bestelle ich gerne bei [seeedstudio](https://www.seeedstudio.com/fusion_pcb.html). Das dauert zwar 3 Wochen von der Bestellung bis zur Lieferung, dafür ist die Qualität aber sehr gut zum vernünftigen Preis. Die Layouts wurden mit [Autodesk Eagle](https://www.autodesk.com/products/eagle/overview) entworfen und sind [hier](https://github.com/nurazur/TiNo/tree/master/eagle) hinterlegt.
 ### Mechanik (Gehäuse)
 ich stelle hier zwei verschiedene Leiterplattendesigns vor:
 Die erste Leiterplatte verwendet die RFM69HCW bzw. RFM95 Pinbelegung und ist für das [Strapubox SP2043 Gehäuse](http://strapubox.de/modules/uploadmanager11/admin/index.php?action=file_download&file_id=163&location_id=0) konzipiert. Damit kann man im Prinzip auch einen LoRa Node verwirklichen, entsprechende Software gibt es passend im Netz.
@@ -338,7 +338,7 @@ Die zweite Leiterplatte ist mit der Pinbelegung des RFM69CW (kompatibel mit RFM1
 Das Besondere am TiNo ist dass die Schaltung wirklich nicht kompliziert ist. 
 
 Das Herzstück ist der Prozessor mit dem HF Modul. Das HF Modul kommuniziert über den SPI Bus, das sind die GPIO's D10(SS) D11(MOSI), D12(MISO) und D13(SCK). Ausserdem benutzt der Treiber einen Interrupt an GPIO D2, der auslöst wenn Daten empfangen werden. Derselbe GPIO D2 wird auch benutzt um das Ende einer Sendesequenz zu signalisieren.
-Die selben GPIO's werden vom ISP Adapter benutzt, denn die Programmierung des Prozessors erfolgt ebenso mit SPI Bus. Damit sich das HF Modul beim Programmieren über iSP nicht angesprochen fühlt, braucht es einen 10KOhm Pullup an der SS Leitung (D10). Im Sleep Mode beeinflusst dieser Widerstand den Ruhestrom nicht.
+Die selben GPIO's werden vom ISP Adapter benutzt, denn die Programmierung des Prozessors erfolgt ebenso mit SPI Bus. Damit sich das HF Modul beim Programmieren über ISP nicht angesprochen fühlt, braucht es einen 10kOhm Pullup an der SS Leitung (D10). Im Sleep Mode beeinflusst dieser Widerstand den Ruhestrom nicht.
 
 Optional kann der Prozessor im Sleep Modus mit einem externen Uhrenquarz (32.768 KHz) bestückt werden. Der Quarz benötigt noch zwei Lastkondensatoren von je 6pF oder 12pF, je nach Bauart des Quarzes. 
 
