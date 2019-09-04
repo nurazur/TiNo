@@ -28,11 +28,16 @@
 // Please maintain this license information along with authorship
 // and copyright notices in any redistribution of this code
 // **********************************************************************************
+
+
 #ifndef RFM69_AH_h
 #define RFM69_AH_h
 #include <Arduino.h>            //assumes Arduino IDE v1.0 or greater
 
-#define RF69_MAX_DATA_LEN         64// 66 // to take advantage of the built in AES/CRC we want to limit the frame size to the internal FIFO size (66 bytes - 3 bytes overhead)
+#include "GenericRadio.h"
+
+
+#define RF69_MAX_DATA_LEN         64 // to take advantage of the built in AES/CRC we want to limit the frame size to the internal FIFO size (66 bytes - 3 bytes overhead)
 #define RF69_SPI_CS               SS // SS is the SPI slave select pin, for instance D10 on atmega328
 
 // INT0 on AVRs should be connected to RFM69's DIO0 (ex on Atmega328 it's D2, on Atmega644/1284 it's D2)
@@ -78,19 +83,21 @@
 #define RF69_TX_LIMIT_MS 1000
 #define RF69_FSTEP 61.03515625 // == FXOSC/2^19 = 32mhz/2^19 (p13 in DS)
 
-class RFM69 {
+class RFM69 : public GenericRadio
+{
   public:
-    static volatile byte DATA[RF69_MAX_DATA_LEN];          // recv/xmit buf, including hdr & crc bytes
-    static volatile byte DATALEN;
+    //static volatile byte DATA[RF69_MAX_DATA_LEN];          // recv/xmit buf, including hdr & crc bytes
+    //static volatile byte DATALEN;
     static volatile uint8_t STATUSREG;
-    static volatile int RSSI; //most accurate RSSI during reception (closest to the reception)
-    static volatile int16_t FEI;
+    //int RSSI; //most accurate RSSI during reception (closest to the reception)
+    //static volatile int16_t FEI;
     static volatile byte _mode; //should be protected?
     static volatile byte TEMPREG;
-    int fdev;
+    //int fdev;
+    //long vcc_dac;
     bool do_frequency_correction;
     
-    RFM69(byte slaveSelectPin=RF69_SPI_CS, byte interruptPin=RF69_IRQ_PIN, bool isRFM69HW=false, byte interruptNum=RF69_IRQ_NUM) 
+    RFM69(byte slaveSelectPin=RF69_SPI_CS, byte interruptPin=RF69_IRQ_PIN, bool isRFM69HW=false, byte interruptNum=RF69_IRQ_NUM) : GenericRadio(RF69_FSTEP)
 	{
       _slaveSelectPin = slaveSelectPin;
       _interruptPin = interruptPin;
@@ -100,18 +107,21 @@ class RFM69 {
       _isRFM69HW = isRFM69HW;
       _PaBoost =false;
 	  fdev =0;
-      //T_OFFS =0;
+      //FSTEP = RF69_FSTEP;
 	  do_frequency_correction = false;
+      DATA = new byte[RF69_MAX_DATA_LEN];
     }
 
     //bool initialize(byte freqBand, byte ID, byte networkID=1);
-    bool initialize(byte freqBand, byte ID, byte networkID=1, byte txpower=31);
-    bool Initialize(byte ID, byte freqBand, byte networkID=1, byte txpower=31); // for compatibility with RFM12 lib
+    bool initialize(byte freqBand, byte networkID=1, byte txpower=31);
+    bool Initialize(byte freqBand, byte networkID=1, byte txpower=31); // for compatibility with RFM12 lib
     void setAddress(byte addr);
     void setNetwork(byte networkID);
     bool canSend();
-    void send(byte toAddress, const void* buffer, byte bufferSize, bool requestACK=false);
-    void Send(byte toAddress, const void* buffer, byte bufferSize, bool requestACK=false); // for compatibility with older RFM12B lib
+    //void send(byte toAddress, const void* buffer, byte bufferSize);
+    void send(const void* buffer, byte bufferSize);
+    //void Send(byte toAddress, const void* buffer, byte bufferSize); // for compatibility with older RFM12B lib
+    void Send(const void* buffer, byte bufferSize); // for compatibility with older RFM12B lib
     //bool sendWithRetry(byte toAddress, const void* buffer, byte bufferSize, byte retries=2, byte retryWaitTime=40); //40ms roundtrip req for  61byte packets
     bool receiveDone();
     //bool ACKReceived(byte fromNodeID);
@@ -119,8 +129,9 @@ class RFM69 {
     //void sendACK(const void* buffer = "", uint8_t bufferSize=0);
     uint32_t getFrequency();
     void setFrequency(uint32_t steps);
+	void setFrequencyMHz(float freqMHz);
     int frequency_correct(void);
-    void encrypt(const char* key);
+    //void encrypt(const char* key);
     void setCS(byte newSPISlaveSelect);
     int readRSSI(bool forceTrigger=false);
     void promiscuous(bool onOff=true);
@@ -138,27 +149,29 @@ class RFM69 {
     void readAllRegs();
     int16_t readAFC(void);
     int16_t readFEI(void);
+	//const double FSTEP;
 
   protected:
     static void isr0();
     void virtual interruptHandler();
-    void sendFrame(byte toAddress, const void* buffer, byte size, bool requestACK=false, bool sendACK=false);
-
     static RFM69* selfPointer;
+    
+    void sendFrame(const void* buffer, byte size);
+
+    
     byte _slaveSelectPin;
     byte _interruptPin;
     byte _interruptNum;
-    //byte _address;
-    //bool _promiscuousMode;
     byte _powerLevel;
     bool _isRFM69HW;
     bool _PaBoost;
+	
 	#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)
 	#else
     byte _SPCR;
     byte _SPSR;
 	#endif
-    //uint32_t center_frequency;
+
     
 
     void receiveBegin();
