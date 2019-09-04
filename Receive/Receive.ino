@@ -1,91 +1,89 @@
-/* RFM69CW Receiver Sketch for Serial communication, i.e. RaspberryPI
+// **********************************************************************************
+// Copyright nurazur@gmail.com
+// **********************************************************************************
+// License
+// **********************************************************************************
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
 
-patially based on work of Nathan Chantrell
-modified by meigrafd @2013 - for UART on RaspberryPI
-modified by nurazur nurazur@gmail.com @2018
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
 
-This sketch can receive general packet formats, but the first 3 bytes are fixed TARGETID, NODEID and FLAGS
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
 
-********************************************************************************
-License
+// Licence can be viewed at
+// http://www.fsf.org/licenses/gpl.txt
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+// Please maintain this license information along with authorship
+// and copyright notices in any redistribution of this code
+// *********************************************************************************
 
 
-Licence can be viewed at
-http://www.fsf.org/licenses/gpl.txt
 
-Please maintain this license information along with authorship
-and copyright notices in any redistribution of this code
-*********************************************************************************
-*/
+// Gateway for the TiNo Wireless Sensor System
+//
+// Based originally on work from Nathan Chantrell
+// modified by meigrafd @2013 - for UART on RaspberryPI
+// extended by nurazur nurazur@gmail.com 2014 - 2019
+// the RF protocol is completely binary, see https://github.com/nurazur/tino
 
-#include <RFM69.h>
-#include <RFM69registers.h>
+
+#define SKETCHNAME "TiNo 2.0.0 receive.ino Ver 02/09/2019"
+#define BUILD 9
+
+
 #include <avr/sleep.h>
-#include <SoftwareSerial.h>
-#include "Mac.h"
-#include "configuration_dist.h"
-#include "calibrate_dist.h"
 
-#define SKETCHNAME "Receive.ino Ver 23/11/2018"
-#define BUILD 7
-//------------------------------------------------------------------------------
-// You will need to initialize the radio by telling it what ID it has and what network it's on
-// The Network ID takes values from 0-255
-// By default the SPI-SS line used is D10 on Atmega328. You can change it by calling .SetCS(pin) where pin can be {8,9,10}
-#define THIS_NODEID       22  //node ID used for this unit
-#define NETWORKID        210  //the network ID
-#define ACK_TIME        2000  // # of ms to wait for an ack
-#define SERIAL_BAUD     38400
-#define TXPOWER           25 // 7 = -18 + 25,  this is 7 dBm.
-#define F_DEV_STEPS     0
-
-//------------------------------------------------------------------------------
-// PIN-Konfiguration 
-//------------------------------------------------------------------------------
-// UART pins
-#define RXPIN 0
-#define TXPIN 1 // pin der an RXD vom PI geht.
-// LED pin
-#define LEDpin 8 // D8, PA2 - set to 0 to disable LED
+#define SERIAL_BAUD 38400
+#ifdef SOFTSERIAL
+    #define RX_PIN 0
+    #define TX_PIN 1
+    #include <SoftwareSerial.h>
+    SoftwareSerial swserial(RX_PIN, TX_PIN);
+    SoftwareSerial *mySerial = &swserial;
+#else
+    HardwareSerial *mySerial = &Serial;
+#endif
 
 
-//encryption is OPTIONAL
-// to enable encryption you will need to:
-// - provide a 16-byte encryption KEY (same on all nodes that talk encrypted)
-// - set the varable ENCRYPTION_ENABLE to 1 in the EEPROM, at runtime in Cfg.EncryptionEnable
+#include "configuration.h"
+#include <datalinklayer.h>
+#include <RFM69.h>
+#include <EEPROM.h>
+#include "calibrate.h"
+
 #define KEY  "TheQuickBrownFox"
 
-
+/*****************************************************************************/
+/***                       Actions                                         ***/
+/*****************************************************************************/
 typedef struct {
-  uint8_t node;      // the node I want to trigger
-  uint8_t port;      // the port I want to trigger
-  uint8_t mask;      // to which bit of the flag byte I shall react
-  uint8_t onoff ;    // type of action:  OFF (00) ON(01) TOGGLE (10) PULSE (11); Pulse length = 2^B, where B = bits [2345], B= (action[i] >>2) &0xf
+  uint8_t node;      // the node to trigger
+  uint8_t port;      // the port to trigger
+  uint8_t mask;      // to which bit of the flag byte it is mapped
+  uint8_t onoff;    // type of action:  OFF (00) ON(01) TOGGLE (10) PULSE (11); Pulse length = 2^B, where B = bits [23456], B= (action[i] >>2) &0xf, C = default on power up, C = bit[7] 1= on, 0 = off
 } action;
 
+#define ADR_NUM_ACTIONS 318
+#define ADR_ACTIONS   ADR_NUM_ACTIONS + 1
+#define MAX_NUM_ACTIONS 40
+action *actions;
+uint8_t num_actions;
 /*
 if action.node is equal to this node, then the flag word in the telegram is evaluated.
-4 flags can be set (bits 1 to bit 4 in the flag byte). Each flag is mapped to a port using the mask byte. 
+4 flags can be set (bits 1 to bit 4 in the flag byte). Each flag is mapped to a port using the mask byte.
 the port is defined in the port[i] array (up to 4 different ports for the four flags)
-Actions are: ON, OFF, TOGGLE Port, PULSE with length 2^B * 0.5 seconds. (needs careful software development!)
+Actions are: ON, OFF, TOGGLE Port, PULSE with length 2^B * 0.5 seconds.
 
 Example: Node 15,  Port 7 shall turn on on flag 02, port 7 shall turn off on flag 04. Port 8 shall be toggled on flag 0x08, Port 5 shall be pulsed for 2 seconds on flag 0x10
 
@@ -110,53 +108,19 @@ mask = 0x10;
 onoff = 0x3 | (0x02 << 2); // B=2, 2^B = 4 * 0.5s = 2s
 */
 
-
-// d is just a buffer, since I can't do a new operator, I need to pass enough memory space 
-// function not part of the mycodec class. since I only need de-interleaving, I save flash space here
-void deinterleave (unsigned char* s, int rows)
-{
-    int i;
-    unsigned char d[rows], bit;
-    for (i=0; i<rows; i++) d[i] =0;
-	
-	for (i=0; i<8*rows; i++)
-	{
-		bit = (s[i%rows] >> (i/rows)) &0x1;
-		bit <<= i%8;
-		
-		d[i/8] |= bit;  
-	}
-		
-    for (i=0; i<rows; i++) s[i] = d[i]; 
-}
+unsigned char pulse_port=0;  // the port for which a pulse is defined and active.
+unsigned int pulse_duration=0; // counter
 
 
-
-// Initialise UART
-SoftwareSerial mySerial(RXPIN, TXPIN);
-
-// instance of the Radio Module
-RFM69 radio;
-Configuration config;
-myMAC Mac(radio, config, (uint8_t*) KEY, &mySerial);
-Calibration CalMode(config, &mySerial, &Mac, BUILD, (uint8_t*) KEY);
-
-
-//##############################################################################
-#define NUM_ACTIONS 4
-action actions[NUM_ACTIONS];
-
-
-void doaction (action actions[], uint8_t num_actions)
+void doaction (uint8_t nodeid, uint8_t flags, action actions[], uint8_t num_actions)
 {
     for (uint8_t i=0; i< num_actions; i++)
     {
-        if(actions[i].node == Mac.rxpacket.payload[NODEID])
+        if(actions[i].node == nodeid) // nodeid matches the actions's nodeId
         {
-            if (actions[i].mask & Mac.rxpacket.payload[FLAGS] )
+            if (actions[i].mask & flags ) // the action's trigger bit is set
             {
-                uint8_t act = actions[i].onoff &0x3;
-                pinMode(actions[i].port, OUTPUT);
+                uint8_t act = actions[i].onoff &0x3; // Action mode
                 switch (act)
                 {
                     case 0:     // OFF
@@ -169,34 +133,102 @@ void doaction (action actions[], uint8_t num_actions)
                         digitalWrite(actions[i].port, !digitalRead(actions[i].port));
                         break;
                     case 3:     //Pulse
-                        // Tbd
                         digitalWrite(actions[i].port, 1);
-                        uint8_t exp = (actions[i].onoff>>2) &0xF;
-                        delay(500 * pow(2,exp)); // not ok for long pulse times (2 minutes or so)
-                        digitalWrite(actions[i].port, 0);
+                        pulse_port = actions[i].port;
+
+                        uint8_t exp = (actions[i].onoff>>2) &0x7F;
+
+                        if (exp <= 4) // less than or equal 8 seconds
+                        {
+                            pulse_duration  =1;
+                            setup_watchdog(5+exp);
+                        }
+                        else // more than  8s
+                        {
+                            pulse_duration = pow(2,exp-4);
+                            setup_watchdog(9); //8s
+                        }
                         break;
-                }   
+                }
             }
-            break;
         }
     }
 }
-//##############################################################################
+
+void setup_watchdog(int timerPrescaler)
+{
+    if (timerPrescaler > 9 ) timerPrescaler = 9; //Correct incoming amount if need be
+    byte bb = timerPrescaler & 7;
+    if (timerPrescaler > 7) bb |= (1<<5); //Set the special 5th bit if necessary
+    //This order of commands is important and cannot be combined
+    MCUSR &= ~(1<<WDRF); //Clear the watchdog reset
+    WDTCSR |= (1<<WDCE) | (1<<WDE); //Set WD_change enable, set WD enable
+    WDTCSR = bb; //Set new watchdog timeout value
+    WDTCSR |= _BV(WDIE); //Set the interrupt enable, this will keep unit from resetting after each int
+}
+
+void stop_watchdog(void)
+{
+    noInterrupts();
+    //This order of commands is important and cannot be combined
+    MCUSR &= ~(1<<WDRF); //Clear the watchdog reset
+    WDTCSR |= (1<<WDCE) | (1<<WDE); //Set WD_change enable, set WD enable
+    WDTCSR = 0; //Set new watchdog timeout value
+    interrupts();
+}
+
+ISR(WDT_vect)
+{
+    pulse_duration--;
+    if (pulse_duration == 0)
+    {
+        if (pulse_port >0) digitalWrite(pulse_port, 0);
+        pulse_port = 0;
+        stop_watchdog();
+    }
+}
+
+/*****************************************************************************/
+/***                      Class instances                                  ***/
+/*****************************************************************************/
+RFM69 radio;
+Configuration config;
+myMAC Mac(radio, config, (uint8_t*) KEY, mySerial);
+Calibration CalMode(config, mySerial, &Mac, BUILD, (uint8_t*) KEY);
+/*****************************************************************************/
+
+
+
+
+/*****************************************************************************/
+/***                       Pin Change Interrupts                           ***/
+/*****************************************************************************/
+#include <PinChangeInterrupt.h>
+uint8_t event_triggered = 0;
+
+// ISR for the Pin change Interrupt
+void wakeUp0() { event_triggered |= 0x1; }
+
+void wakeUp1() { event_triggered |= 0x2; }
+
+void wakeUp2() { event_triggered |= 0x4; }
+
+void wakeUp3() { event_triggered |= 0x8; }
 
 
 /*****************************************************************************/
 /****                         blink                                       ****/
 /*****************************************************************************/
-void activityLed (unsigned char state, unsigned int time = 0) 
+void activityLed (unsigned char state, unsigned int time = 0)
 {
-  if (config.LedPin) 
+  if (config.LedPin)
   {
     pinMode(config.LedPin, OUTPUT);
-    if (time == 0) 
+    if (time == 0)
     {
       digitalWrite(config.LedPin, state);
-    } 
-    else 
+    }
+    else
     {
       digitalWrite(config.LedPin, state);
       delay(time);
@@ -205,6 +237,7 @@ void activityLed (unsigned char state, unsigned int time = 0)
   }
 }
 
+
 /*****************************************************************************/
 /*
      Read VCC by  measuring the 1.1V reference and taking VCC as reference voltage.
@@ -212,7 +245,7 @@ void activityLed (unsigned char state, unsigned int time = 0)
 */
 /*****************************************************************************/
 long readVcc() {
-  
+
   #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
       ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
   #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
@@ -240,79 +273,108 @@ float getVcc(long vref)
 }
 
 /**********************************************************************/
-void setup() 
+
+
+
+
+
+// init Setup
+void setup()
 {
-    // configure device. Normally these data come from the EEPROM
-    config.Nodeid = 	    THIS_NODEID;
-    config.Networkid =		NETWORKID;
-    config.Gatewayid = 		22;
-    config.Frequencyband = BAND_868MHZ ;
-    config.frequency = 865.0;
-    config.TxPower = TXPOWER;
-    config.LedPin = LEDpin;
-    config.RxPin = RXPIN;
-    config.TxPin = TXPIN;
-    config.EncryptionEnable=1;
-    config.FecEnable =1;
-    config.InterleaverEnable =1;
-    config.SerialEnable =1;
-    config.IsRFM69HW = 1;
-    config.PaBoost = 0;
-    config.FedvSteps= F_DEV_STEPS; 
-    
-    /***  INITIALIZE SERIAL PORT ***/  
-    pinMode(config.RxPin, INPUT);
-    pinMode(config.TxPin, OUTPUT);
-    mySerial.begin(SERIAL_BAUD);
-    mySerial.println(SKETCHNAME);
-    
-    pinMode(4, OUTPUT);
-       
-  
+    /***  INITIALIZE SERIAL PORT ***/
+
+    #ifdef SOFTSERIAL
+        pinMode(RX_PIN, INPUT);
+        pinMode(TX_PIN, OUTPUT);
+    #endif
+
+    mySerial->begin(SERIAL_BAUD);
+    mySerial->println(SKETCHNAME);
+
+
     /***                     ***/
     /***     CALIBRATE?      ***/
     /***                     ***/
     CalMode.configure();
 
-    /***                          ***/
-    /***  INITIALIZE RADIO MODULE ***/ 
-    /***                          ***/
-    mySerial.print("RF Chip = "); config.IsRFM69HW ?    mySerial.print("RFM69HCW") : mySerial.print("RFM69CW");  mySerial.println();
-    mySerial.print ("FDEV_STEPS: ");mySerial.print(config.FedvSteps);mySerial.println();
-    
+    /*************  INITIALIZE ACTOR MODULE ******************/
+    EEPROM.get(ADR_NUM_ACTIONS, num_actions);
+
+
+    if (num_actions > 0 && num_actions <= MAX_NUM_ACTIONS)
+    {
+        mySerial->print("number of actions: ");mySerial->println(num_actions);
+        actions = new action[num_actions];
+    }
+    else
+    {
+        num_actions = 0;
+        actions = NULL;
+    }
+
+    for(int i=0; i< num_actions; i++)
+    {
+        EEPROM.get(ADR_ACTIONS + i*sizeof(action), actions[i]);
+    }
+
+    // verify the checksum
+    uint16_t cs_from_eeprom;
+    EEPROM.get(ADR_ACTIONS + MAX_NUM_ACTIONS * sizeof(action), cs_from_eeprom);
+    uint16_t cs_from_data = CalMode.checksum_crc16((uint8_t*) actions, sizeof(action) * num_actions);
+
+    if ((cs_from_eeprom ^ cs_from_data) != 0)
+    {
+        mySerial->println("Checksum incorrect for Actions.");
+        num_actions =0;
+    }
+
+    for(int i=0; i< num_actions; i++)
+    {
+        mySerial->print("action "); mySerial->print(i);mySerial->print("for Node: "); mySerial->print(actions[i].node);
+        mySerial->print(", Port: "); mySerial->print(actions[i].port);
+        pinMode(actions[i].port, OUTPUT);
+
+        digitalWrite(actions[i].port, actions[i].onoff>>7);
+        mySerial->print(", Mask: "); mySerial->print(actions[i].mask);
+        mySerial->print(", OnOff: "); mySerial->print(actions[i].onoff);
+
+        mySerial->println();
+    }
+
+    /*************  INITIALIZE PIN CHANGE INTERRUPTS ******************/
+    if (config.PCI0Pin >=0)
+    {
+        pinMode(config.PCI0Pin, (config.PCI0Trigger >>2) );  // set the pin to input or input with Pullup
+        attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(config.PCI0Pin), wakeUp0, config.PCI0Trigger&0x3);
+    }
+    if (config.PCI1Pin >=0)
+    {
+        pinMode(config.PCI1Pin, (config.PCI1Trigger >>2));  // set the pin to input
+        attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(config.PCI1Pin), wakeUp1, config.PCI1Trigger&0x3);
+    }
+    if (config.PCI2Pin >=0)
+    {
+        pinMode(config.PCI2Pin, (config.PCI2Trigger >>2));  // set the pin to input
+        attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(config.PCI2Pin), wakeUp2, config.PCI2Trigger&0x3);
+    }
+    if (config.PCI3Pin >=0)
+    {
+        pinMode(config.PCI3Pin, (config.PCI3Trigger >>2));  // set the pin to input
+        attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(config.PCI3Pin), wakeUp3, config.PCI3Trigger&0x3);
+    }
+
+    /***********************************************************/
+    // normal initialization starts here
+    // Dont load eeprom data here, it is now done in the configuration (boot) routine.EEPROM could be encrypted.
+    //EEPROM.get(0, config);
+
+     /***  INITIALIZE RADIO MODULE ***/
+    mySerial->print("RF Chip = "); config.IsRFM69HW ?    mySerial->print("RFM69HCW") : mySerial->print("RFM69CW");  mySerial->println();
+    mySerial->print ("FDEV_STEPS: ");mySerial->print(config.FedvSteps);mySerial->println();
+
     Mac.radio_begin();  // re-initialize radio
-    // for debug: this makes sure we can read from the radio.
-    // byte version_raw = radio.readReg(REG_VERSION);
-    // mySerial.print ("Radio chip ver: "); mySerial.print(version_raw>>4, HEX); mySerial.print (" Radio Metal Mask ver: "); mySerial.print(version_raw&0xf, HEX); mySerial.println();
-    
-    /*** Test area for taking actions ***/
-    
-    // turn port 7 ON when flag 0x2 is set in message from Node 15
-    actions[0].node = 15;
-    actions[0].port = 7;
-    actions[0].mask = 0x02;
-    actions[0].onoff = 0x1;
 
-    // turn port 7 OFF when flag 0x4 is set in message from Node 15
-    actions[1].node = 15;
-    actions[1].port = 7;
-    actions[1].mask = 0x04;
-    actions[1].onoff = 0x0;
-
-    // same for node 24!
-    actions[2].node = 24;
-    actions[2].port = 7;
-    actions[2].mask = 0x02;
-    actions[2].onoff = 0x1;
-
-    actions[3].node = 24;
-    actions[3].port = 7;
-    actions[3].mask = 0x04;
-    actions[3].onoff = 0x0; 
-
-
- 
-  if (config.LedPin) 
+  if (config.LedPin)
   {
       activityLed(1, 1000); // LED on
   }
@@ -321,60 +383,62 @@ void setup()
 
 void loop()
 {
-    Mac.radio_receive(true); // blocking
+    Mac.radio_receive(false); // non- blocking
     {
-        if (Mac.rxpacket.success || Mac.rxpacket.payload[NODEID] !=0)
+        //if (Mac.rxpacket.success || Mac.rxpacket.payload[NODEID] !=0) // show all packets, even erroneous ones
+        if (Mac.rxpacket.success) // only show goos packets
         {
             // common for all formats
-            mySerial.print("NodeId,"); mySerial.print(Mac.rxpacket.payload[NODEID],DEC);
-            mySerial.print(",s=");     mySerial.print(Mac.rxpacket.RSSI);
-            mySerial.print(",data:");
-            Mac.rxpacket.errorcode >=0 ?    mySerial.print("OK;") : mySerial.print("FAIL;");
-            
+            mySerial->print(Mac.rxpacket.payload[NODEID],DEC);mySerial->print(" ");
+
             // find out which protocol format is used
             if (!(Mac.rxpacket.payload[FLAGS] & 0x20)) // bit 5 in Flags is 0, flags is xx0x xxxx
-            {         
-                // This is the standard data structure foir Senors or actors
+            {
+                // This is the standard protocol for TiNo Senors or actors
                 Payload *pl = (Payload*) Mac.rxpacket.payload;
-                mySerial.print(pl->supplyV);   mySerial.print(";");
-                mySerial.print(pl->count);     mySerial.print(";");
-                mySerial.print((pl->temp - 1000)*4); mySerial.print(";");
-                mySerial.print(pl->humidity/2.0); mySerial.print(";");
-                mySerial.print(pl->flags, HEX); 
-                mySerial.print(";");
-               
-                        
-                if (Mac.rxpacket.errorcode >=0) doaction(actions, NUM_ACTIONS);
+                mySerial->print("v=");  mySerial->print(pl->supplyV);
+                mySerial->print("&c=");  mySerial->print(pl->count);
+                mySerial->print("&t=");  mySerial->print((pl->temp - 1000)*4);
+                mySerial->print("&h=");  mySerial->print(int(pl->humidity/2.0*100));
+
+                mySerial->print("&intr=0x");
+                int intpts =0;
+                if (pl->flags & 0x2) intpts |= 0x1;
+                if (pl->flags & 0x4) intpts |= 0x1<<2;
+                if (pl->flags & 0x8) intpts |= 0x1<<4;
+                if (pl->flags & 0x10) intpts |= 0x1<<6;
+                mySerial->print(intpts,HEX);
+                if (Mac.rxpacket.errorcode >=0) doaction(Mac.rxpacket.payload[NODEID], Mac.rxpacket.payload[FLAGS], actions, num_actions);
             }
             else
             {
-                // it is another packet type: work in progress.
-                mySerial.print(Mac.rxpacket.payload[TARGETID]); mySerial.print(";");
-                mySerial.print(Mac.rxpacket.payload[NODEID]); mySerial.print(";");
-                mySerial.print("0x");mySerial.print(Mac.rxpacket.payload[FLAGS],HEX); mySerial.print(";");
-                
+                // it is another packet type.
+                // Only data in the switch statement are interesting.
+                mySerial->print(Mac.rxpacket.payload[TARGETID]); mySerial->print(";");
+                mySerial->print(Mac.rxpacket.payload[NODEID]); mySerial->print(";");
+                mySerial->print("0x");mySerial->print(Mac.rxpacket.payload[FLAGS],HEX); mySerial->print(";");
+
                 switch (Mac.rxpacket.payload[FLAGS] & 0x0f)
                 {
                     case 1:
                         // string packet with length 16 (so we've got 13 bytes effective)
-                        Mac.rxpacket.payload[16] = 0;
-                        mySerial.print((char*)(Mac.rxpacket.payload+3)); mySerial.print(";");
+                        config.FecEnable ? Mac.rxpacket.payload[8] = 0 : Mac.rxpacket.payload[16] = 0;
+                        mySerial->print((char*)(Mac.rxpacket.payload+3)); mySerial->print(";");
                         break;
                     case 2:
                         // string packet with length 24 (so we've got 21 bytes effective)
                         Mac.rxpacket.payload[24] = 0;
-                        mySerial.print((char*)(Mac.rxpacket.payload+3)); mySerial.print(";");
+                        mySerial->print((char*)(Mac.rxpacket.payload+3)); mySerial->print(";");
                         break;
                     default:
-                        mySerial.print("unknown format!;");
+                        mySerial->print("oups!;");
                 }
-                
+
             }
-            
-            mySerial.print(",FEI=");    mySerial.print(Mac.rxpacket.FEI, DEC);
-            mySerial.print(",T=");      mySerial.print(int(radio.readTemperature(0)));
-            if (config.FecEnable) {mySerial.print(",biterrors=");  mySerial.print(Mac.rxpacket.numerrors);} // error detection only possible with FEC
-            mySerial.println(""); 
+            mySerial->print("&rssi=");     mySerial->print(int(Mac.rxpacket.RSSI*10));
+            mySerial->print("&fo=");    mySerial->print(Mac.rxpacket.FEI, DEC);
+            mySerial->println("");
+            Mac.rxpacket.payload[NODEID] =0;
         }
         else
         {
@@ -383,9 +447,21 @@ void loop()
              -2:  data length does not match
              -3:  not my message or address corrupted
          */
-        }    
-        //activityLed(1,30); // LED on // commented out because this makes us blind for 30 ms
-    }   
+        //mySerial->print("Error Code: "); mySerial->print(Mac.rxpacket.errorcode);
+        //mySerial->print(" NodeId,"); mySerial->print(Mac.rxpacket.payload[NODEID],DEC);
+        //mySerial->print(",s=");     mySerial->print(Mac.rxpacket.RSSI); mySerial->println();
+        }
+    }
+    if (event_triggered) // a local Port change interrupt occured.
+    {
+        //mySerial->print("Event triggered: "); mySerial->print(event_triggered);
+        //mySerial->print(", Nodeid: "); mySerial->print(config.Nodeid);
+        //mySerial->println();
+
+        doaction(config.Nodeid, event_triggered, actions, num_actions);
+        event_triggered =0;
+    }
+
 }
 
 
