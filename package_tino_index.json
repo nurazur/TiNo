@@ -45,7 +45,7 @@
                "architecture": "avr",
                "version": "2.0.1",
                "category": "Contributed",
-               "url": "https://github.com/nurazur/TiNo/releases/download/untagged-631990bdde907ef4f06b/tino-avr_2.0.beta_1.zip",
+               "url": "https://github.com/nurazur/TiNo/releases/download/v2.0.1/tino-avr_2.0.beta_1.zip",
                "archiveFileName": "tino-avr_2.0.beta_1.zip",
                "checksum": "SHA-256:7BAD93FFD6659E51B6E2E0AA800F2F4CF49C99C32F53FF6E2F4AFD2C7B1D1316",
                "size": "39335",
