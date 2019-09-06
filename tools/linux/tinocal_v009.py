@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 
 import os, sys
-
-if os.name is not'nt':
-    print("app is made for Windows; exit.")
+if os.name is 'nt':
+    print ("app is made for posix, this is Windows; exit.")
     sys.exit(1)
     
-import msvcrt, atexit, time
-
+import termios, atexit, time
 from select import select
 import serial
 import struct
+import os
 
-SerialPort = 'COM10'
+
+SerialPort = '/dev/ttyUSB1'
 SerialBaud = 38400
 PassWord = b"TheQuickBrownFox"
 
@@ -24,27 +24,55 @@ ADR_ACTIONS = ADR_NUM_ACTIONS + 1
 MAX_NUM_ACTIONS = 40
 
 print(os.name)
+print(sys.version)
+
+# save the terminal settings
+fd = sys.stdin.fileno()
+new_term = termios.tcgetattr(fd)
+old_term = termios.tcgetattr(fd)
+
+# new terminal setting unbuffered
+new_term[3] = (new_term[3] & ~termios.ICANON & ~termios.ECHO)
+
 
 # switch to normal terminal
 def set_normal_term():
-    pass
+    termios.tcsetattr(fd, termios.TCSAFLUSH, old_term)
 
 # switch to unbuffered terminal
 def set_curses_term():
-    pass
+    termios.tcsetattr(fd, termios.TCSAFLUSH, new_term)
 
 def putch(ch):
-    msvcrt.putch(ch)
+    if PY2:
+        sys.stdout.write(ch)
+    elif PY3:
+        if type(ch) is str:
+            sys.stdout.write(ch)
+        elif type(ch) is bytes:
+            sys.stdout.write(ch.decode())
+    sys.stdout.flush()
 
 def getch():
-    return msvcrt.getch()
+    if PY2:
+        return sys.stdin.read(1)
+    else:
+        return sys.stdin.read(1).encode()
 
 def getche():
-    return msvcrt.getche()
+    ch = getch()
+    putch(ch)
+    return ch
 
 def kbhit():
-    return msvcrt.kbhit()
+    dr,dw,de = select([sys.stdin], [], [], 0)
+    #return dr <> []
+    if not dr == []:
+        return True
+    return False
 
+   
+    
 def crc16(data):
     crc = 0xFFFF;
     
@@ -490,9 +518,9 @@ def parse_eeprom_list(eepromlist, i):
     if i in list(mem.keys()):
         #print (type(eepromlist[i]))
         t = memtypes[i]
-        if t is 'b':
+        if t == 'b':
             outp = "%s=%i" %(mem[i], int(eepromlist[i]))
-        elif t is 'i':
+        elif t == 'i':
             if PY3:
                 p= bytearray()
                 p.append(int(eepromlist[i]))
@@ -500,7 +528,7 @@ def parse_eeprom_list(eepromlist, i):
             else:
                 p =chr(int(eepromlist[i])) + chr(int(eepromlist[i+1]))
             outp = "%s=%i" % (mem[i], struct.unpack('h', p)[0])
-        elif t is 'f':
+        elif t == 'f':
             if PY3:
                 p= bytearray()
                 p.append(int(eepromlist[i]))
@@ -511,7 +539,7 @@ def parse_eeprom_list(eepromlist, i):
                 p =chr(int(eepromlist[i])) + chr(int(eepromlist[i+1])) + chr(int(eepromlist[i+2])) + chr(int(eepromlist[i+3]))
             outp = "%s=%f" % (mem[i], struct.unpack('f', p)[0])
     else:
-        #print "unknown parameter"
+        #print ("unknown parameter")
         pass
     return outp
 
@@ -519,7 +547,7 @@ def parse_eeprom_list(eepromlist, i):
 def read_eeeprom_all(str2parse):
     eepromlist= str2parse[2:].split(b',')
     # print raw data (useful for debug only)
-    #print eepromlist
+    #print (eepromlist)
     
     # print length of EEPROM content (useful for debug only)
     #print len(eepromlist)
@@ -803,14 +831,43 @@ if __name__ == '__main__':
       try:
         if kbhit():
             ch = getch()
-            #print ord(ch)
-            if ord(ch) is 224:
+            if ord(ch) is 27:
                 keycode = ord(getch())
-                if keycode == 72:
-                    print("\narrow up")
-                    pass
+                if keycode == 79:
+                    keycode1 = ord(getch())
+                    print (keycode1)
+                    if keycode1 == 65:
+                        print ('arrow up')
+                    elif keycode1 == 66:
+                        print ('arrow down')
+                    elif keycode1 == 67:
+                        print ('arrow right')
+                    elif keycode1 == 68:
+                        print ('arrow left')
+                    elif keycode1 ==70:
+                        print ('End')
+                    elif keycode1 ==72:
+                        print ('Home')
+                    elif keycode1 ==80:
+                        print ('F1')
+                elif keycode == 91:
+                    c1 = ord(getch())
+                    c2 = ord(getch())
+                    if c2 is not 126:
+                        c3 = ord(getch())
+                    elif c1 == 50:
+                        print ("50 -> Insert")
+                    elif c1 == 51:
+                        print ("Delete")
+                    elif c1 == 53:
+                        print ("Page up")
+                    elif c1 == 54:
+                        print ("Page down")
+                    else:
+                        print ("code: %i: %i, %i" % (keycode, c1 , c2))
+
                 continue
-            elif ord(ch) is 8: #Backspace
+            elif ord(ch) is 127: #Backspace
                 prompt = b'\r<-- '
                 putch(b'\r')
                 for i in range(len(inputstr)+4):
@@ -974,7 +1031,7 @@ if __name__ == '__main__':
                         #print "received calibration request and sent 'y'"
                         #print time.time() -ts
                     elif recstr[:2] == b"a," and (cmd_sent == b'a' or cmd_sent == b'ls'):
-                        #print recstr
+                        #print (recstr)
                         read_eeeprom_all(recstr)
                     elif recstr[:2] == b"a," and (cmd_sent[:2] == b'g,' or cmd_sent[:4] == b'get,'):
                         eeprom2file(recstr, storefile)
@@ -984,7 +1041,7 @@ if __name__ == '__main__':
                     elif recstr[:8] == b'vcc_adc,':
                         print("VCC = %.0f mV" % float(recstr.split(b',')[1]))
                     elif recstr == b"calibration mode.":
-                        print(recstr.decode())
+                        print(recstr)
                         # das Passwort senden wenn in der Kommandozeile als Option
                         if "-pwd" in sys.argv:                        
                             port.write(PassWord)
