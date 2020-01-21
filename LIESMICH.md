@@ -82,4 +82,7 @@ dadurch kostengünstig zu beschaffen.
   - mit ISP Adapter oder 
   - seriell mit FTDI Adapter über Bootloader
 - bis zu 4 externe Interrupts (z.B. 4 Tasten) konfigurierbar
-- ab Version 2: Interface zu IOBroker
+- ab Version 2: [Interface zu IOBroker](https://github.com/bowao/ioBroker.tino/)
+
+## Dokumentation in Deutsch
+[deutsche Dkumentation](https://github.com/nurazur/TiNo/blob/master/dokumentation.md)
