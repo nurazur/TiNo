@@ -1,5 +1,10 @@
 # TiNo
+![](https://github.com/nurazur/TiNo/blob/master/TiNo_Logo4.png)
 ![](https://github.com/nurazur/TiNo/blob/master/matchbox.jpg)
+
+# Hinweis aus aktuellem Anlass
+Der Master-Branch ist als Entwicklungsbranch gedacht, die Verwendung, auch einzelner Dateien, ist auf eigenes Risiko. Die Releases sind jedoch gründlich getetstet. Doch auch hier gilt: ich übernehme keine Garantie dass die Software frei von Fehlern ist. 
+
 
 "**TI**ny **NO**de" : Batteriebetriebener Funksensor oder Funk-Aktor. 
 Ziel dieses Projekts ist die Entwicklung schnurloser Funk Sensoren, 
@@ -78,3 +83,4 @@ dadurch kostengünstig zu beschaffen.
   - mit ISP Adapter oder 
   - seriell mit FTDI Adapter über Bootloader
 - bis zu 4 externe Interrupts (z.B. 4 Tasten) konfigurierbar
+- ab Version 2: Interface zu IOBroker
