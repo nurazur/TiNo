@@ -121,7 +121,7 @@ Der Sender oder besser "Node" (Knoten in einem Netzwerk) wird für ein Board mit
  
 ### Weitere Bibliotheken Installieren  
 Folgende Bibliotheken braucht man zusätzlich zur Installation des TiNo Boards:
-- *SoftwareWire*        (für I2C Bus Sensoren)
+- *SoftwareWire*        (für I2C Bus Sensoren) ACHTUNG: Version 1.4.1 verwenden, neuere Versionen sind NICHT kompatibel.
 - *HTU21D_SoftwareWire* (für den HTU21D Sensor Sketch)
 - *SHT3x_SoftwareWire*  (für den SHT3x Sketch)
 - *PinChangeInterrupt*  (Interrupts werden standardmässig unterstützt)
@@ -174,9 +174,13 @@ Kommt keine Antwort, sendet der TiNo, nur als Debugnachricht, ein "timeout". Als
 Wenn die Prüfsumme nicht übereinstimmt:
 - Der TiNo geht direkt inden Kalibriermodus.
 
-Das EEPROMer Tool ist in Python geschrieben. Da serielle Ports von Computer zu Computer verschieden sind gibt es eine Kommandozeilenoption für den Port. Die Baudrate für den Sender TiNo ist 4800 Baud. Für ein Gateway braucht man moeglichst hohe Baudraten; im Moment ist sie auf 38400 Baud festgelegt. Für beide Konfigurationen kann das selbe Eepromer Tool verwendet werden.
+Da serielle Ports von Computer zu Computer verschieden sind gibt es eine Kommandozeilenoption für den Port. Die Baudrate für den Sender TiNo ist 4800 Baud. Für ein Gateway braucht man moeglichst hohe Baudraten; im Moment ist sie auf 38400 Baud festgelegt. Für beide Konfigurationen kann das selbe Eepromer Tool verwendet werden.
+**Wichtige Hinweise:**
+Das EEPROMer Tool ist in Python 2.7 geschrieben aber geht jetzt auch mit Python 3.7. 
+Das EEPROMer Tool tinocal der Version 1 ist in Python 2.7 geschrieben aber läuft unter Python 3 nicht.
+Die Python Tools der Version 1 und Version 2 sind untereinander nicht kompatibel! Firmware der Version 1 muss man mit dem Tool der Version 1 abgleichen, Firmware der Version 2 und später mit dem tool tinocal_v009.py, welches auch Python 3 unterstützt.
 
-Wenn man das EEPROMer Tool startet, öffnet es zunächst den seriellen Port. An einem FTDI Adapter bewirkt das, dass der angeschlossene TiNo neu startet, Dann wartet das Tool auf das 'CAL?' vom TiNo, und sendet ggf. das 'y' sofort zurück um den Kalibriermodus zu erzwingen. 
+Wenn man das EEPROMer Tool startet, öffnet es zunächst den seriellen Port. An einem FTDI Adapter (mit herausgefuehrter DTR Leitung) bewirkt das, dass der angeschlossene TiNo neu startet. Wer keinen Adapter mit DTR Leitung zur Verfügung hat, muss zum Neustart des TiNo die DTR Leitung kurz auf Masse legen und wieder freigeben. Dann wartet das Tool auf das 'CAL?' vom TiNo, und sendet ggf. das 'y' sofort zurück um den Kalibriermodus zu erzwingen. 
 Sobald das Tool meldet dass man im Kalibriermodus ist, muss man das Passwort eingeben. Dies ist mit dem *KEY* Parameter im Source Code identisch. Derselbe KEY wird auch zum Verschlüsseln des HF Pakets benutzt. Das EEPROM ist verschlüsselt, weil sonst ein Dieb einen TiNo ohne weiteres komplett umkonfigurieren könnte und damit wild in der Gegend herumfunken kann (oder noch Schlimmeres anrichten kann), ohne dass er das Passwort kennen müsste. 
 
 Passwort eingeben:
@@ -196,7 +200,7 @@ Folgende Syntax wird von dem Tool verstanden:
 |`cs`| verify checksum.
 |`fe` | receive 10 packets from external source, calculate mean and store in EEPROM
 |`g` or `get` | store eeprom content to file. Syntax: `g(et),<filename>`
-|`ls`| List EEPROM content.
+|`ls`| Liste die  EEPROM Konfigurationsdaten.
 |`m` |          Measure VCC with calibrated values
 |`quit` | terminate program
 |`read`  or `r` | read from EEPROM. Syntax: `r(ead),<addr>`
