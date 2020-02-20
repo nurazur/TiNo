@@ -70,7 +70,6 @@ Es wird ein Modul im Boards Manager der Arduino IDE bereitgestellt.
 Ein TiNo ist ein Sensor der periodisch eine Messung vornimmt und diese per Funksignal an ein Gateway überträgt.  Dieses Gateway besteht normalerweise aus einem als Empfänger konfigurierten TiNo der an einen Raspberry Pi über dessen seriellen Port angeschlossen ist. Das Gateway empfängt die Funksignale, dekodiert sie und wenn die Daten sinnvoll sind werden diese an den Raspberry Pi weitergegeben. Ausserdem quittiert das Gateway die Nachricht auf Aufforderung. Das zwischen Gateway und Raspberry von mir verwendete Protokoll ist einfach, könnte aber im Prinzip jedem beliebigen Standard folgen, z.B. RFLink. 
 TiNos können standardmässig auch auf externe Signale reagieren, z.B Tueröffner Kontakte. 
 Auf dem Raspberry Pi läuft ein Python Programm, welches die vom Gateway ankommenden Pakete aufbereitet und in eine Datenbank schreibt. Eine Web Applikation kann dann auf diese Daten zugreifen und daraus Graphiken etc machen. Dies ist aber (noch) nicht Gegenstand des TiNo Projekts. 
-
 Um eine Funkverbindung herzustellen braucht man zwei TiNos, einen als Sensor konfigurierten und einen als Gateway konfigurierten. 
 
 ### Hardwarearchitektur
