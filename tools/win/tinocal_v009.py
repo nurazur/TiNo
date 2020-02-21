@@ -14,7 +14,7 @@ import struct
 
 SerialPort = 'COM10'
 SerialBaud = 38400
-PassWord = b"TheQuickBrownFox"
+PassWord = b"TheQuickBrownFok"
 
 ######### Python version ########
 PY2 = (sys.version_info.major==2)
