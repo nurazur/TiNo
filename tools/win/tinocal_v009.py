@@ -48,8 +48,6 @@ def getche():
 def kbhit():
     return msvcrt.kbhit()
 
-
-
 def crc16(data):
     crc = 0xFFFF;
 
@@ -57,8 +55,8 @@ def crc16(data):
         return 0
 
     for i in range(len(data)):
-        dbyte = int(data[i])
-        #dbyte = data[i]
+        #print data[i]
+        dbyte = data[i]
         crc ^= (dbyte << 8)
         crc &= 0xFFFF
         for j in range(8):
@@ -68,7 +66,7 @@ def crc16(data):
             if (mix):
                 crc = crc ^ 0x1021
             crc &= 0xFFFF
-        #print (("%i, data: %i, crc: %x") % (i, data[i], crc))
+        #print ("%i, data: %i, crc: %x") % (i, data[i], crc)
     return crc;
 
 
@@ -100,14 +98,13 @@ def help():
     print("'fe'            receive 10 packets from external source, calculate mean and store in EEPROM")
     print("'g' or 'get'    store eeprom content to file. Syntax: 'g(et),<filename>'")
     print("'la'            List definitions of actions the node shall execute")
-    print("'ls'            List EEPROM basic configuration.")
+    print("'ls'            List EEPROM content.")
     print("'m'             Measure VCC with calibrated values")
     print("'quit'          terminate program")
     print("'read'  or 'r'  read from EEPROM. Syntax: 'r(ead),<addr>'")
     print("'ri'            read 16 bit integer from EEPROM. Syntax: 'ri(ead),<addr>'")
     print("'rf'            read float from EEPROM. Syntax: 'ri(ead),<addr>'")
     print("'s'             request checksum update and store in EEPROM.")
-    print("'sy'            activate and/or re-sync a node with the rolling-code. Syntax: 'sy,<node-id>")
     print("'vddcal'        calibrate VCC measurement. Syntax: 'v(ddcal),<VCC at device in mV>'")
     print("'write' or 'w'  write value to to EEPROM.  Syntax: 'w(rite),<addr>,<value>'")
     print("'wf'            write float value to EEPROM. Syntax: 'wf,<addr>,<value>'")
@@ -256,7 +253,6 @@ def write_eeprom_frequency_correction(serial):
         print("General ERROR when attempting to write frequency correction table")
         print(sys.exc_info())
 
-
 def write_eeprom(str2parse, serial):
     try:
         items = str2parse.split(b',')
@@ -265,7 +261,7 @@ def write_eeprom(str2parse, serial):
             if thekey in list(mem.keys()): #verbose
                 addr  = mem[thekey]
             else:
-                addr = int(items[1]) # items[1] is type string in any case! here we must change to integer.
+                addr = int(items[1])
 
             if addr in list(memtypes.keys()):
                 if memtypes[addr] is 'b':
@@ -303,7 +299,7 @@ def write_eeprom(str2parse, serial):
                     print("wrong type")
             else:
                 #print("Error: invalid address parameter")
-                outstr = b"w,%s,%s\n" % (items[1], items[2])
+                outstr = b"w,%s,%s" % (items[1], items[2])
                 serial.write(outstr)
         else:
             print("Error: missing parameters")
@@ -311,13 +307,13 @@ def write_eeprom(str2parse, serial):
         #print("ERROR")
         print(sys.exc_info())
 
-
 def write_eeprom_uint(str2parse, serial):
     try:
-        items = str2parse.split(',')
+        items = str2parse.split(b',')
         if len(items) > 2:
-            if items[1] in mem.keys():
-                addr  = mem[items[1]]
+            thekey = items[1].decode()
+            if thekey in list(mem.keys()):
+                addr  = mem[thekey]
             else:
                 addr = int(items[1])
 
@@ -344,9 +340,9 @@ def write_eeprom_uint(str2parse, serial):
 
 def write_eeprom_int16(str2parse, serial):
     try:
-        items = str2parse.split(',')
+        items = str2parse.split(b',')
         if len(items) > 2:
-            if items[1] in mem.keys():
+            if items[1] in list(mem.keys()):
                 addr  = mem[items[1]]
             else:
                 addr = int(items[1])
@@ -371,10 +367,11 @@ def write_eeprom_int16(str2parse, serial):
 
 def write_eeprom_float(str2parse, serial):
     try:
-        items = str2parse.split(',')
+        items = str2parse.split(b',')
         if len(items) > 2:
-            if items[1] in mem.keys():
-                addr  = mem[items[1]]
+            thekey = items[1].decode()
+            if thekey in list(mem.keys()):
+                addr  = mem[thekey]
             else:
                 addr = int(items[1])
 
@@ -393,10 +390,11 @@ def write_eeprom_float(str2parse, serial):
 
 def write_eeprom_long(str2parse, serial):
     try:
-        items = str2parse.split(',')
+        items = str2parse.split(b',')
         if len(items) > 2:
-            if items[1] in mem.keys():
-                addr = mem[items[1]]
+            thekey = items[1].decode()
+            if thekey in list(mem.keys()):
+                addr  = mem[thekey]
             else:
                 addr = int(items[1])
 
@@ -416,12 +414,13 @@ def write_eeprom_long(str2parse, serial):
         #print("Error")
         print(sys.exc_info())
 
-def read_eeprom(str2parse, serial):
+def read_eeprom(str2parse, serial): #str2parse is a byte string
     try:
-        items = str2parse.split(',')
+        items = str2parse.split(b',')
         if len(items) > 1:
-            if items[1] in mem.keys():
-                addr  = mem[items[1]]
+            thekey = items[1].decode()
+            if thekey in list(mem.keys()):
+                addr  = mem[thekey]
             else:
                 addr = int(items[1])
             if addr >= 0 and addr < EEPROM_SIZE:
@@ -437,10 +436,11 @@ def read_eeprom(str2parse, serial):
 
 def read_eeprom_float(str2parse, serial):
     try:
-        items = str2parse.split(',')
+        items = str2parse.split(b',')
         if len(items) > 1:
-            if items[1] in mem.keys():
-                addr  = mem[items[1]]
+            thekey = items[1].decode()
+            if thekey in list(mem.keys()):
+                addr  = mem[thekey]
             else:
                 addr = int(items[1])
             if addr >= 0 and addr < EEPROM_SIZE-4:
@@ -456,10 +456,11 @@ def read_eeprom_float(str2parse, serial):
 
 def read_eeprom_int16_t(str2parse, serial):
     try:
-        items = str2parse.split(',')
+        items = str2parse.split(b',')
         if len(items) > 1:
-            if items[1] in mem.keys():
-                addr  = mem[items[1]]
+            thekey = items[1].decode()
+            if thekey in list(mem.keys()):
+                addr  = mem[thekey]
             else:
                 addr = int(items[1])
             if addr >= 0 and addr < EEPROM_SIZE-2:
@@ -470,7 +471,7 @@ def read_eeprom_int16_t(str2parse, serial):
         else:
             print("Error: missing parameters")
     except:
-        #print("ERROR")
+        #print "ERROR"
         print(sys.exc_info())
 
 def calculate_checksum(eeprom_list):
@@ -483,16 +484,29 @@ def calculate_checksum(eeprom_list):
 # i is a particular index and must be in the dictionary
 # accordingly the value is read out and a human readble Variable name as well
 def parse_eeprom_list(eepromlist, i):
-    outp='' #type string
-    if i in mem.keys():
+    outp=''
+    if i in list(mem.keys()):
+        #print (type(eepromlist[i]))
         t = memtypes[i]
         if t is 'b':
-            outp = "%s=%s" %(mem[i], eepromlist[i])
+            outp = "%s=%i" %(mem[i], int(eepromlist[i]))
         elif t is 'i':
-            p =chr(int(eepromlist[i])) + chr(int(eepromlist[i+1]))
+            if PY3:
+                p= bytearray()
+                p.append(int(eepromlist[i]))
+                p.append(int(eepromlist[i+1]))
+            else:
+                p =chr(int(eepromlist[i])) + chr(int(eepromlist[i+1]))
             outp = "%s=%i" % (mem[i], struct.unpack('h', p)[0])
         elif t is 'f':
-            p =chr(int(eepromlist[i])) + chr(int(eepromlist[i+1])) + chr(int(eepromlist[i+2])) + chr(int(eepromlist[i+3]))
+            if PY3:
+                p= bytearray()
+                p.append(int(eepromlist[i]))
+                p.append(int(eepromlist[i+1]))
+                p.append(int(eepromlist[i+2]))
+                p.append(int(eepromlist[i+3]))
+            else:
+                p =chr(int(eepromlist[i])) + chr(int(eepromlist[i+1])) + chr(int(eepromlist[i+2])) + chr(int(eepromlist[i+3]))
             outp = "%s=%f" % (mem[i], struct.unpack('f', p)[0])
     else:
         #print("unknown parameter")
@@ -501,7 +515,7 @@ def parse_eeprom_list(eepromlist, i):
 
 
 def read_eeeprom_all(str2parse):
-    eepromlist= str2parse[2:].split(',')
+    eepromlist= str2parse[2:].split(b',')
     # print raw data (useful for debug only)
     #print eepromlist
 
@@ -532,7 +546,7 @@ def read_actions():
     for action in range(numactions):
         print('')
         addr = ADR_ACTIONS + action *4
-        print (b"Action %i:" % action)
+        print ((b"Action %i:" % action).decode())
 
         outstr = b"r,%i\n" % addr
         port.write(outstr)
@@ -573,7 +587,7 @@ def read_actions():
                 if mask & 0x8:
                     triggersource += " PCI3"
 
-            print("Mask:  %s (%s )" % (recstr[:-2], triggersource))
+            print("Mask:  %s (%s )" % (recstr[:-2].decode(), triggersource))
 
 
         outstr = b"r,%i\n" % (addr+3)
@@ -594,25 +608,21 @@ def read_actions():
                 p = pow(2,p-1)
                 pulsdur = ", %.1f seconds" % p
 
-            print("OnOff: %s (%s%s)" % (recstr[:-2], mode, pulsdur))
-
+            print("OnOff: %s (%s%s)" % (recstr[:-2].decode(), mode, pulsdur))
 
 
 def eeprom2file(str2parse, filename):
-    eepromlist= str2parse[2:].split(b',') # list of strings
+    eepromlist= str2parse[2:].split(b',')
     file = open(filename, 'w')
     for i in range(len(eepromlist)):
         outp = parse_eeprom_list(eepromlist, i)
-        if 'USE_CRYSTAL_RTC' in outp or 'EEPROM_VERSION_NUMBER' in outp or 'SOFTWAREVERSION_NUMBER' in outp:
-            continue
         if len(outp) > 0:
             print(outp)
             file.write(outp+'\n')
-    #crc16_checksum = crc16(eepromlist[:-2])
-    #if crc16_checksum ^ int(eepromlist[mem['CHECKSUM']]) == 0:
-    #    print("Checksum ok.")
-    #else:
-    #    print("\nPython calculated Checksum: %i" % crc16_checksum)
+    if calculate_checksum(eepromlist) ^ int(eepromlist[mem['CHECKSUM']]) == 0:
+        print("Checksum ok.")
+    else:
+        print("\nPython calculated Checksum: 0x%x" % calculate_checksum(eepromlist))
     file.close()
 
 def file2eeprom(str2parse, serial):
@@ -625,11 +635,11 @@ def file2eeprom(str2parse, serial):
         items = line.split('=')
         if len(items) > 1:
             items[0] = items[0].strip()
-            if items[0] in mem.keys():
+            if items[0] in list(mem.keys()):
                 addr = mem[items[0]]
                 # write Byte
                 if memtypes[addr] is 'b':
-                    if items[1][:2] == '0x':
+                    if items[1][:2] == b'0x':
                         val =  int(items[1],16)
                     else:
                         val =  int(items[1])
@@ -643,7 +653,7 @@ def file2eeprom(str2parse, serial):
 
                 #write 16 bit Integer
                 elif memtypes[addr] is 'i':
-                    if items[1][:2] == '0x':
+                    if items[1][:2] == b'0x':
                         val =  int(items[1],16)
                     else:
                         val =  int(items[1])
@@ -673,20 +683,21 @@ def file2eeprom(str2parse, serial):
                         serial.write(outstr)
                     read_raw(port)
 
-    serial.write("s\n")
+    serial.write(b"s\n")
     if SerialWaitForResponse(port):
         recstr = read_raw(port)
-        print("checksum: %s" % recstr)
+        print("checksum: %s" % recstr.decode())
 
     data_arr = bytearray(MAX_NUM_ACTIONS *4) # initialized with zero's
     act_params = {'NODE':0,'PORT':1,'MASK':2,'ONOFF':3}
     number_of_actions = 0
+
     for line in content:
         line = line.split('#',1)[0]              # remove comments from line
-        if 'ACTION' in line[:6]:                 # for example: ACTION19.NODE = 25
+        if 'ACTION' in line[:6]:                 # z.B. ACTION19.NODE = 25
             params = line.split('=')             # ['ACTION19.NODE ', ' 25']
             if len(params) >1:
-                act = params[0].split('.')       # ['ACTION19', 'NODE ']
+                act = params[0].split('.')       # ['ACTIONS19', 'NODE ']
                 act_num = int(act[0][6:])        # 19
                 if len(act) > 1:
                     act_offs = act[1].rstrip()   # 'NODE'
@@ -698,37 +709,37 @@ def file2eeprom(str2parse, serial):
                         continue # line does not contain a valid a key
                 else:
                     continue # line does not contain a key
-                act_val = int(params[1])         # example: 25
+                act_val = int(params[1])
                 data_arr[addr] = act_val         # put value at right place in array, because sequence is important for CRC16
-
+                
                 outstr = b"w,%i,%i\n" % (addr + ADR_ACTIONS, act_val)
-                print(outstr[:-1])
+                print(outstr[:-1].decode())
                 serial.write(outstr)
                 if SerialWaitForResponse(port):
                     read_raw(port)
                 else:
                     while not SerialWaitForResponse(port):
                         read_raw(port)
-                        print(outstr[:-1])
+                        print(outstr[:-1].decode())
                         serial.write(outstr)
                     read_raw(port)
             else:
                 continue #line does not contain a '='
 
-    outstr = "w,%i,%i\n" % (ADR_NUM_ACTIONS, number_of_actions)
-    print(outstr[:-1])
+    outstr = b"w,%i,%i\n" % (ADR_NUM_ACTIONS, number_of_actions)
+    print(outstr[:-1].decode())
     serial.write(outstr)  # write number of actions into EEPROM
     if SerialWaitForResponse(port):
         read_raw(port)
     data_arr[4*number_of_actions:4*MAX_NUM_ACTIONS] =[] # strip unused bytes from array
+
     cs = crc16(data_arr)
     cs_adr = ADR_ACTIONS + MAX_NUM_ACTIONS *4
     outstr = b"wi,%i,%i\n" %(cs_adr, cs)
     serial.write(outstr)    # write CRC16 checksum into EEPROM
     if SerialWaitForResponse(port):
         read_raw(port)
-    #print("cs - addresse: %i" % cs_adr)
-    print("checksum calculated by Python: 0x%x" %(cs))
+    print("checksum calculated by Python: %x" %(cs))
 
 
 
@@ -738,19 +749,15 @@ def file2eeprom(str2parse, serial):
 ### Measured VCC will be: VCC_CAL*ADC_CAL/measured result
 def cal_vcc(str2parse, serial):
     try:
-        items = str2parse.split(',')
+        items = str2parse.split(b',')
         if len(items) > 1:
             vcc = int(items[1])
             if vcc > 1800: # must be > 1.8V to operate normally.
-                outstr = "wi,%i,%i\n" % ( mem['VCCatCAL'] ,vcc)
-                print(outstr[:-2])
+                outstr = b"wi,%i,%i\n" % ( mem['VCCatCAL'] ,vcc)
+                print(outstr[:-2].decode())
                 serial.write(outstr)
-                #time.sleep(.25)
-                #outstr = "w,%i,%i\n" % (mem['VCCatCAL_LSB'], (vcc & 0xFF) )
-                #print(outstr[:-2])
-                #serial.write(outstr)
                 time.sleep(.25)
-                serial.write("c\n") # request DUT to measure ADC value and store into eeprom.
+                serial.write(b"c\n") # request DUT to measure ADC value and store into eeprom.
             else:
                 print("too small VCC! abort calibration.")
                 return
@@ -772,29 +779,6 @@ def OpenSerialPort(port):
             print("ready.")
         except:
             time.sleep(0.1)
-
-
-def rolling_code_sync(instr):
-    try:
-        if instr =='all': #reset allnodes into "not tracked" mode
-            for i in range(513,1024,2):
-                outstr = "w,%i,255" % i
-                print(outstr)
-                port.write(outstr +'\n')
-                if SerialWaitForResponse(port):
-                    read_raw(port)
-
-        else:
-            node = int(instr) #activate and reset specific node (re-sync)
-            node = 513 + 2 * node
-            outstr = "w,%i,254" % node
-            print(outstr)
-            port.write(outstr +'\n')
-    except:
-        print("Sync for Node failed")
-
-
-
 
 def SerialWaitForResponse(port):
     done = False
@@ -822,10 +806,10 @@ if __name__ == '__main__':
                 argcindex +=1
     atexit.register(set_normal_term)
     set_curses_term()
-    inputstr=""
+    inputstr=b""
     cmd_sent = ""
     storefile = ''
-    recstr =""
+    recstr =b""
     tstart = time.time()
     isset_timeout = False
     timeout_delay = 500 # timeout in ms
@@ -863,148 +847,152 @@ if __name__ == '__main__':
                     pass
                 continue
             elif ord(ch) is 8: #Backspace
-                prompt = '\r<-- '
-                putch('\r')
+                prompt = b'\r<-- '
+                putch(b'\r')
                 for i in range(len(inputstr)+4):
-                    putch(' ')
+                    putch(b' ')
                 inputstr = inputstr[:-1]
+
                 for c in prompt:
+                    if PY3:
+                        c = bytes([c])
                     putch(c)
                 for c in inputstr:
+                    if PY3:
+                        c = bytes([c])
                     putch(c)
                 continue
             else:
-                if inputstr =="":
-                    inprompt = "<-- "
-                    for c in inprompt:
-                        putch(c)
+                if inputstr ==b"":
+                    inprompt = b"<-- "
+                    for c in inprompt: #c is an int in PY3
+                        if PY2:
+                            putch(c) # this is good in PY2
+                        elif PY3:
+                            putch(bytes([c])) # putch wants a byte string in PY3
                 putch(ch)
-            if ch == chr(10) or ch == chr(13):
+            if ord(ch) == 10 or ord(ch) == 13:
                 print('')
                 #sent_commands.append(inputstr)
                 # do something with input string, i.e send over serial port
-                if inputstr == "quit" or inputstr == "exit" or inputstr == "q":
+                if inputstr == b"quit" or inputstr == b"exit" or inputstr == b"q":
                     port.close()
                     break
-                elif inputstr == "help" or inputstr == "?":
+                elif inputstr == b"help" or inputstr == b"?":
                     print("help:")
                     help()
 
                 #write an item into EEPROM. Specify address by number or by its Name, like "write,NODEID,20'
-                elif inputstr[:6] == "write," or inputstr[:2] == "w,":
+                elif inputstr[:6] == b"write," or inputstr[:2] == b"w,":
                     write_eeprom(inputstr, port)
                     #tstart = time.time()
                     #isset_timeout = True
 
                 #write an long int into EEPROM. Specify address by number or by its Name, like "write,NODEID,20'
-                elif inputstr[:3] == 'wl,':
+                elif inputstr[:3] == b'wl,':
                     write_eeprom_long(inputstr, port)
 
                 #write an unsigned int into EEPROM. Specify address by number or by its Name, like "write,NODEID,20'
-                elif inputstr[:3] == 'wu,':
+                elif inputstr[:3] == b'wu,':
                     write_eeprom_uint(inputstr, port)
 
                 #write an unsigned int into EEPROM. Specify address by number or by its Name, like "write,NODEID,20'
-                elif inputstr[:3] == 'wi,':
+                elif inputstr[:3] == b'wi,':
                     write_eeprom_int16(inputstr, port)
 
                 #write float value into EEPROM. Specify address by number or by its Name, like "write,NODEID,20'
-                elif inputstr[:3] == 'wf,':
+                elif inputstr[:3] == b'wf,':
                     write_eeprom_float(inputstr, port)
 
                 #read a float value from EEPROM
-                elif inputstr[:3] == "rf,":
+                elif inputstr[:3] == b"rf,":
                     read_eeprom_float(inputstr, port)
 
                 #read a float value from EEPROM
-                elif inputstr[:3] == "ri,":
+                elif inputstr[:3] == b"ri,":
                     read_eeprom_int16_t(inputstr, port)
 
                 #read an item from EEPROM. Specify either address by number or by its name , like "read,NODEID"
-                elif inputstr[:5] == "read," or inputstr[:2] == "r,":
+                elif inputstr[:5] == b"read," or inputstr[:2] == b"r,":
                     read_eeprom(inputstr, port)
 
                 #calibrate VCC measurement.
-                elif inputstr[:7] == "vddcal,":
+                elif inputstr[:7] == b"vddcal,":
                     cal_vcc(inputstr, port)
 
                 #request DUT to measure ADC and write result into EEPROM.
-                elif inputstr == 'c':
-                    port.write("c\n")
+                elif inputstr == b'c':
+                    port.write(b"c\n")
 
                 #copy data from file to eeprom
-                elif inputstr[:3] == 'cp,' or inputstr[:5] == 'copy,':
+                elif inputstr[:3] == b'cp,' or inputstr[:5] == b'copy,':
                     file2eeprom(inputstr, port)
 
                 # request a list with all EEPROM items
-                elif inputstr == 'a' or inputstr == 'ls':
-                    port.write("a\n")
+                elif inputstr == b'a' or inputstr == b'ls':
+                    port.write(b"a\n")
                     cmd_sent = inputstr # need to store this command as inputstr is reset after this loop
 
                 # list actions definition
-                elif inputstr=='la':
+                elif inputstr== b'la':
                     read_actions()
 
                 # measure FEI from a external reference signal and store in EEPROM
-                elif inputstr[:2]=='fe':
-                    port.write("fe\n")
+                elif inputstr[:2]==b'fe':
+                    port.write(b"fe\n")
 
                 # load frequency correction table into EEPROM. Values are calculated by Python from cubic parameters
-                elif inputstr == 'ft' or inputstr == 'frequency_table':
+                elif inputstr == b'ft' or inputstr == b'frequency_table':
                     write_eeprom_frequency_correction(port)
 
                 # get eeprom content and save in file
-                elif inputstr[:2] == 'g,' or inputstr[:4] == 'get,':
+                elif inputstr[:2] == b'g,' or inputstr[:4] == b'get,':
                     cmd_sent = inputstr
-                    storefile = inputstr.split(',')[1]
-                    port.write("a\n")
-
-                #reset rolling code for node x
-                elif inputstr[:3] == 'sy,':
-                    rolling_code_sync(inputstr[3:])
+                    storefile = inputstr.split(b',')[1]
+                    port.write(b"a\n")
 
                 # request update of checksum
-                elif inputstr[:1] == 's':
-                    port.write("s\n")
+                elif inputstr[:1] == b's':
+                    port.write(b"s\n")
                     tstart = time.time()
                     isset_timeout = True
 
                 # Measure VCC with calibrated values
-                elif inputstr == 'm':
-                    port.write("m\n")
+                elif inputstr == b'm':
+                    port.write(b"m\n")
 
                 # exit calibration mode
-                elif inputstr[:1] == 'x':
-                    xstr = "x\n"
+                elif inputstr[:1] == b'x':
+                    xstr = b"x\n"
                     port.write(xstr)
-                    #print("%i bytes written." % len(xstr))
+                    #print "%i bytes written." % len(xstr)
 
                 # Verify checksum
-                elif inputstr == 'cs':
-                    port.write("cs\n")
+                elif inputstr == b'cs':
+                    port.write(b"cs\n")
 
-                elif inputstr ==  'pc' or inputstr == 'close':
+                elif inputstr ==  b'pc' or inputstr == b'close':
                     port.close()
                     print("serial port closed.")
 
-                elif inputstr == 'po' or inputstr == 'open':
+                elif inputstr == b'po' or inputstr == b'open':
                     print("open serial port now")
                     OpenSerialPort(port)
 
-                elif inputstr == 'pwd':
-                    port.write(PassWord + '\n')
+                elif inputstr == b'pwd':
+                    port.write(PassWord + b'\n')
 
-                elif inputstr[:3] == 'pw,':
-                    port.write(inputstr[3:] + '\n')
+                elif inputstr[:3] == b'pw,':
+                    port.write(inputstr[3:] + b'\n')
 
                 else:
                     print("Invalid command: %s" % inputstr)
                     # in order to test the echo function of the device, uncomment the following 3 lines.
                     #inputstr += '\r'
                     #num = port.write(inputstr)
-                    #print("Number of bytes written to serial port: %i" %(num))
+                    #print "Number of bytes written to serial port: %i" %(num)
 
-                inputstr =""
+                inputstr =b""
                 #inprompt = "<-- "
                 #for c in inprompt:
                     #putch(c)
@@ -1014,40 +1002,37 @@ if __name__ == '__main__':
             isset_timeout = False
             #ts = time.time()
             recstrraw = read_raw(port)           # Achtung, string returned kann \r\n enthalten == 2 Strings!
-            recstrlist = recstrraw.split('\r\n')
+            recstrlist = recstrraw.split(b'\r\n')
             prompt = "--> "
             del recstrlist[-1]
             for recstr in recstrlist:
                 if len(recstr) >  0:
-                    if recstr =="CAL?":
-                        port.write("y")
-                        #print("received calibration request and sent 'y'")
-                        #print (time.time() -ts)
-                    elif recstr[:2] == "a," and (cmd_sent == 'a' or cmd_sent == 'ls'):
-                        #print(recstr)
+                    if recstr ==b"CAL?":
+                        port.write(b'y')
+                        #print "received calibration request and sent 'y'"
+                        #print time.time() -ts
+                    elif recstr[:2] == b"a," and (cmd_sent == b'a' or cmd_sent == b'ls'):
+                        #print recstr
                         read_eeeprom_all(recstr)
-                    elif recstr[:2] == "a," and (cmd_sent[:2] == 'g,' or cmd_sent[:4] == 'get,'):
+                    elif recstr[:2] == b"a," and (cmd_sent[:2] == b'g,' or cmd_sent[:4] == b'get,'):
                         eeprom2file(recstr, storefile)
                         storefile=''
-                    elif recstr[:3] == 'cs,':
+                    elif recstr[:3] == b'cs,':
                         print("Checksum %s" % recstr[3:])
-                    elif recstr[:8] == 'vcc_adc,':
-                        print("VCC = %.0f mV" % float(recstr.split(',')[1]))
-                    elif recstr == "calibration mode.":
-                        print(recstr)
+                    elif recstr[:8] == b'vcc_adc,':
+                        print("VCC = %.0f mV" % float(recstr.split(b',')[1]))
+                    elif recstr == b"calibration mode.":
+                        print(recstr.decode())
                         # das Passwort senden wenn in der Kommandozeile als Option
                         if "-pwd" in sys.argv:
-                            port.write(PassWord + '\n')
-                    elif recstr == "Pass OK":
+                            port.write(PassWord)
+                            port.write(b'\n')
+                    elif recstr == b"Pass OK":
                         pwd_ok = True
-                        print(recstr)
-                        # die Optionen abarbeiten
-                        #if "-ls" in sys.argv:
-                        #   cmd_sent = 'ls'
-                        #   port.write("a\n")
+                        print(recstr.decode())
                     else:
-                        #print "%s (%i bytes)" % (recstr, len(recstr))
-                        print(prompt + recstr)
+                        #print("%s (%i bytes)" % (recstr, len(recstr)))
+                        print(prompt + recstr.decode())
                 else:
                     print("garbage!")
             #inprompt = "<-- "
@@ -1057,20 +1042,21 @@ if __name__ == '__main__':
             if is_timeout(tstart, timeout_delay, isset_timeout):
                 isset_timeout = False
                 print("timeout!!")
+        # work on command line options
         if pwd_ok and argc > argcindex:
             option = sys.argv[argcindex]
             argcindex += 1
             if option =='-ls': # list EEPROM content
-                cmd_sent = 'ls'
-                port.write("a\n")
+                cmd_sent = b'ls'
+                port.write(b"a\n")
             elif option == '-cs': # query EEPROM
                 print('<-- cs')
-                port.write("cs\n")
+                port.write(b"cs\n")
             elif option == '-s': # update checksum
                 print('<-- s')
-                port.write("s\n")
+                port.write(b"s\n")
             elif option == '-x': # store EEPROM and leave calibration mode
-                port.write('x\n')
+                port.write(b'x\n')
             elif option[:4] == '-cp,': # copy a file to EEPROM
                 print(option[4:])
                 file2eeprom(option[1:], port) # bloed, aber ist halt so
@@ -1078,15 +1064,18 @@ if __name__ == '__main__':
                 port.close()
             elif option == '-q': #quit eepromer tool
                 port.close()
-                break
+            elif option[:7] == "-vddcal":
+                cal_vcc(option[1:].encode(), port)
+            elif option == '-m':
+                port.write(b"m\n")
 
         #sys.stdout.write('.')
         time.sleep(.05)
-        #print ('-')
+        #print '-'
 
       except serial.serialutil.SerialException:
         print("Serial Port Error")
-        inputstr =""
+        inputstr =b""
         port.close()
         #OpenSerialPort(port)
       except IOError:
