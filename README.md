@@ -59,8 +59,9 @@ PCBs fit into low cost PVC boxes with the size of a matchbox that are readily av
 - HTU21D
 - SHT21, SHT20, SHT25
 - SHT30, SHT31, SHT35
+- BME280
 - I2C Bus based sensors can easily be integrated
-- 4 digitale GPIOs
+- 4 digital GPIOs
     
 ## System / Software
 - Open Source Software C++
