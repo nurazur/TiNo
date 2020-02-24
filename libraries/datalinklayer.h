@@ -1,4 +1,4 @@
-// Data Link Layer for Nodes and Gateways using RFM69CW or HCW
+// Data Link Layer for Nodes and Gateways using RFM69CW or HCW or CC1101
 
 // **********************************************************************************
 // Copyright nurazur@gmail.com
@@ -23,8 +23,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Licence can be viewed at                               
-// http://www.fsf.org/licenses/gpl.txt                    
+// Licence can be viewed at
+// http://www.fsf.org/licenses/gpl.txt
 
 // Please maintain this license information along with authorship
 // and copyright notices in any redistribution of this code
@@ -33,7 +33,7 @@
 #ifndef mymac
 #define mymac
 
-#include <Arduino.h> 
+#include <Arduino.h>
 #include <GenericRadio.h>
 
 #include "codec.h"
@@ -43,34 +43,72 @@
 #define NODEID 1
 #define FLAGS 2
 
+// for alternate packets, count is the fourth byte
+#define ALT_COUNT 3
+
+//in alternate Packets, the packet type is specified in the 5. byte
+#define ALT_PACKET_TYPE 4
+
 // structure defining the actual data that are transmitted/received.
 // Classic Payload with 8 Bytes
-typedef struct 
-{ 
+typedef struct
+{
    uint8_t targetid;
    uint8_t nodeid;
    uint8_t flags;
    uint16_t supplyV :12;    // Supply voltage
    uint16_t count :8;
-   uint16_t temp :12;   // Temperature reading 
-   uint8_t humidity;    // Humidity reading 
-}  Payload; 
+   uint16_t temp :12;   // Temperature reading
+   uint8_t humidity;    // Humidity reading
+}  Payload;
 
-
-
-typedef struct 
-{ 
+// structure defining alternate Packet type 3, a BME280
+// temperature, humidity and pressure (pressure has 24 bits)
+// Packet length: 12 Bytes
+typedef struct
+{
    uint8_t targetid;
    uint8_t nodeid;
    uint8_t flags;
-   int16_t fei;   
    uint8_t count;
-   uint8_t RSSI;   
-   uint8_t temp;   
-}  PayloadAck; 
+   uint8_t packet_type =3;  // must be 3
+   uint16_t supplyV :12;    // Supply voltage
+   uint16_t temp :12;   // Temperature reading
+   uint8_t humidity;    // Humidity reading
+   uint32_t pressure:24;
+} PacketType3;
 
 
-// structure that contains all important data about an received Packet. 
+//structure defining alternate Packet type 4, up to 3 DS18B20
+// 14 bit resolution
+
+typedef struct
+{
+   uint8_t targetid;
+   uint8_t nodeid;
+   uint8_t flags;
+   uint8_t count;
+   uint8_t packet_type =4;  // must be 4
+   uint16_t supplyV :12;    // Supply voltage
+   uint16_t temp0 :12;   // Temperature reading
+   uint16_t temp1 :12;
+   uint16_t temp2 :12;
+   uint8_t count_msb;
+} PacketType4;
+
+typedef struct
+{
+   uint8_t targetid;
+   uint8_t nodeid;
+   uint8_t flags;
+   int16_t fei;
+   uint8_t count;
+   uint8_t RSSI;
+   uint8_t temp;
+}  PayloadAck;
+
+
+// structure that contains all important data about an received Packet.
 typedef struct
 {
     uint8_t     payload[64]; // max message length
@@ -79,7 +117,7 @@ typedef struct
     int8_t      TEMP;
     uint16_t    numerrors=0xffff;
     int8_t      errorcode =0;
-    bool        success = false; 
+    bool        success = false;
 }  RadioRxPacket;
 
 
@@ -90,12 +128,12 @@ class myMAC {
         myMAC(GenericRadio &Radio, Configuration &config, uint8_t *EncryptionKey = NULL, Stream* ser = &Serial);
         void set_encryption_key(uint8_t *Key);
         void radio_begin(void);
-        int16_t radio_calc_temp_correction(int temp); 
+        int16_t radio_calc_temp_correction(int temp);
         bool radio_receive(bool blocking=false);
         bool radio_send(Payload &tinytx, uint8_t requestAck=0);
         bool radio_send(uint8_t *data, uint8_t datalen, uint8_t requestAck=0);
         bool radio_send(uint8_t *data, uint8_t datalen, uint8_t requestAck, int16_t temperature);
-        
+
         RadioRxPacket rxpacket;
         const uint8_t *encryption_key=NULL;
     private:
@@ -104,7 +142,7 @@ class myMAC {
         GenericRadio &radio;
         Configuration &Cfg;
         fec_codec coder;
-    
+
 };
 
 #endif

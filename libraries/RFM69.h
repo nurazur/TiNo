@@ -36,6 +36,7 @@
 
 #include "GenericRadio.h"
 
+#define RADIO RFM69
 
 #define RF69_MAX_DATA_LEN         64 // to take advantage of the built in AES/CRC we want to limit the frame size to the internal FIFO size (66 bytes - 3 bytes overhead)
 #define RF69_SPI_CS               SS // SS is the SPI slave select pin, for instance D10 on atmega328

@@ -38,7 +38,7 @@ extern float getVcc(long);
 extern long  readVcc();
 extern void activityLed (unsigned char state, unsigned int time=0);
 
-  
+
 #include <EEPROM.h>
 #include "datalinklayer.h"
 #include "calibrate.h"
@@ -50,7 +50,7 @@ Calibration::Calibration(Configuration& C, Stream* S, myMAC* M, int softwarebuil
 }
 
 Calibration::Calibration(Configuration& C, Stream* S, int softwarebuild) : serial(S), Cfg(C), SoftwareVersion(softwarebuild)
-{ 
+{
     Mac = NULL;
     authenticated = true; // don't use encrytion of EEPROM
     encryption_key = NULL;
@@ -68,17 +68,17 @@ uint16_t Calibration::checksum_crc16(uint8_t *data, uint8_t data_len)
 {
     uint16_t crc = 0xFFFF;
     //uint8_t data_len = offsetof(Configuration, checksum);
-    //uint8_t *data = (uint8_t*) &Cfg; 
-    
+    //uint8_t *data = (uint8_t*) &Cfg;
+
     if (data_len == 0)
         return 0;
 
-    for (unsigned int i = 0; i < data_len; ++i) 
+    for (unsigned int i = 0; i < data_len; ++i)
     {
         uint16_t dbyte = data[i];
         crc ^= dbyte << 8;
-        
-        for (unsigned char j = 0; j < 8; ++j) 
+
+        for (unsigned char j = 0; j < 8; ++j)
         {
             uint16_t mix = crc & 0x8000;
             crc = (crc << 1);
@@ -106,7 +106,7 @@ bool Calibration::verify_checksum(void) // perform Check over Cfg structure.
 bool Calibration::verify_checksum_crc16(void)
 {
     uint16_t cs = checksum_crc16((uint8_t*) &Cfg, offsetof(Configuration, checksum)) ^ Cfg.checksum;
-    if (cs != 0) 
+    if (cs != 0)
         return false;
     return true;
 }
@@ -123,7 +123,7 @@ bool Calibration::authenticate (char* str2parse)
     {
         serial->println("Pass OK");
         return true;
-    } 
+    }
 }
 
 /**** parser for calibration commands over serial port                    ***/
@@ -137,10 +137,10 @@ r,<addr>            read byte at configuration address <addr>
 ri,<addr>           read 16 bit integer at configuration address <addr>
 rf,<addr>           read float at configuration address <addr>
 
-c                   measure ADC and store 
+c                   measure ADC and store
 cs                  verify checksum and report
 a                   list configuration content, byte wise
-s                   calculate checksum and update 
+s                   calculate checksum and update
 m                   measure VCC with calibrated values
 fe                  measure FEI in RX mode from a reference signal and copy to configuration
 x                   exit calibration mode
@@ -148,24 +148,24 @@ x                   exit calibration mode
 
 bool Calibration::parse (char* str2parse)
 {
-       
+
     char *cmd, *ptr;
     int addr;
     bool calibration_done = false;
-    uint8_t *pcfg = (uint8_t*) &Cfg; 
-    
+    uint8_t *pcfg = (uint8_t*) &Cfg;
+
     cmd = strtok(str2parse, ",");
     ptr = strtok(NULL, ",");
-    if (ptr != NULL) 
+    if (ptr != NULL)
     {
        addr = atoi(ptr);
-       if (addr <0 || addr > 511) addr = -1;
-    }       
+       if (addr <0 || addr > 1023) addr = -1;
+    }
     else
        addr =-1;
-    
 
-    
+
+
     if (addr >=0) // write or read command
     {
         ptr = strtok(NULL, ","); // pointer to value, if any
@@ -187,7 +187,7 @@ bool Calibration::parse (char* str2parse)
                     {
                         EEPROM.put(addr, val_i);
                         EEPROM.get(addr, val_i);
-                        serial->print(val_i, DEC);                        
+                        serial->print(val_i, DEC);
                     }
                     else
                     {
@@ -204,18 +204,18 @@ bool Calibration::parse (char* str2parse)
                         serial->print(val, DEC);
                     }
                     else
-                    { 
+                    {
                         *((byte*) (pcfg+addr)) = val;
                         serial->print((byte) *(pcfg+addr), DEC);
                     }
                 }
                 serial->println("");
             }
-            else    
+            else
                 error_message(str2parse);
                 return false;
         }
-        else  // read command 
+        else  // read command
         {
             if(cmd[0] == 'r') //read command
             {
@@ -230,8 +230,8 @@ bool Calibration::parse (char* str2parse)
                         int16_t val_i;
                         EEPROM.get(addr,val_i);
                         serial->print(val_i);
-                    }                    
-                    else 
+                    }
+                    else
                     {
                         serial->print(*((int16_t*) (pcfg+addr)));
                     }
@@ -251,7 +251,7 @@ bool Calibration::parse (char* str2parse)
             }
         }
     }
-    
+
     else // command with no address specifier - neither read nor write
     {
         if (cmd[0] == 'c' && cmd[1] =='s') // cs -verify checksum and report
@@ -284,10 +284,10 @@ bool Calibration::parse (char* str2parse)
             serial->print(Cfg.checksum, HEX);
             serial->println("");
         }
-        
+
         else if (cmd[0] == 'm') // measure VCC
         {
-            long vref; 
+            long vref;
             vref = (long)Cfg.AdcCalValue * Cfg.VccAtCalmV;
             serial->print("vcc_adc,");
             serial->print(getVcc(vref), DEC);
@@ -296,29 +296,31 @@ bool Calibration::parse (char* str2parse)
         else if (cmd[0] == 'f' && cmd[1] =='e') // measure FEI in RX mode and store in EEPROM
         {
             FeiMeasurement fei;
-            Mac->radio_begin(); // takes FDEV_STEPS into consideration.
+            Cfg.FedvSteps = 0;  // Reset FDEV_STEPS
+            Mac->radio_begin(); // takes FDEV_STEPS into consideration, but its set to 0.
+
             fei.num_averages =12;
             if (this->radio_fei_cal(fei))
             {
-                Cfg.FedvSteps = Cfg.FedvSteps + fei.avg;
+                Cfg.FedvSteps = fei.avg;
                 serial->print("T=");      serial->print(Mac->rxpacket.TEMP); serial->println();
                 serial->print("avg=");   serial->print(fei.avg); serial->print("; count="); serial->print(fei.count);
                 serial->print("; min="); serial->print(fei.min); serial->print("; max=");   serial->print(fei.max);
                 serial->print("; stddev="); serial->print(fei.stddev); serial->println("");
-                serial->println(" finished."); 
+                serial->println(" finished.");
                 //serial->flush();
             }
             else
             {
                 serial->println("FEI measurement failed.");
             }
-   
+
         }
-        
+
         else if (cmd[0] == 'x') // exit calibration mode
         {
             calibration_done = true;
-            
+
         }
         else//
             error_message(str2parse);
@@ -327,14 +329,14 @@ bool Calibration::parse (char* str2parse)
 }
 
 void Calibration::calibrate()
-{ 
+{
     bool cal_done = false;
     long tstart=millis();;
     unsigned char  led =0;
     uint8_t i=0;
-    char inputstr[MAXINPUTSTRINGLENGTH]; 
+    char inputstr[MAXINPUTSTRINGLENGTH];
     *inputstr=0;
-    
+
     serial->println("calibration mode.");
     Cfg.EepromVersionNumber = EEPROMVERSIONNUMBER;
     Cfg.SoftwareversionNumber = SoftwareVersion;
@@ -344,14 +346,14 @@ void Calibration::calibrate()
     #else
     Cfg.UseCrystalRtc = (uint8_t) 0;
     #endif
-    
+
     while (!cal_done)
     {
         while (serial->available() > 0)
         {
             char bt = serial->read();
             if (bt == '\r' || bt == '\n')
-            {   
+            {
                 if (i < MAXINPUTSTRINGLENGTH)
                 {
                     inputstr[i] = 0;
@@ -372,11 +374,11 @@ void Calibration::calibrate()
                     i=0;
                 }
             }
-            
+
 
             if (cal_done) break;
         }
-        
+
         if (((millis() - tstart) > 125))
         {
             activityLed(led); // LED on
@@ -389,7 +391,7 @@ void Calibration::calibrate()
         xxtea Xxtea((uint8_t*) encryption_key, (uint8_t*) &Cfg);
         Xxtea.crypter(encrypt, sizeof(Configuration));
         EEPROM.put(0, Cfg);
-        // got 2 choices: encrypt and de-crypt like here, or make a copy of Cfg and encrypt it for the EEPROM. 
+        // got 2 choices: encrypt and de-crypt like here, or make a copy of Cfg and encrypt it for the EEPROM.
         Xxtea.crypter(decrypt, sizeof(Configuration));
     }
     else
@@ -410,7 +412,7 @@ void Calibration::configure()
 
 
     if(!this->verify_checksum()) // while loop instead? so we would force a valid checksum?
-    { 
+    {
         // checksum not ok
         serial->println("checksum not ok");
         this->calibrate(); // checksum failed, so we have to calibrate it.
@@ -419,18 +421,18 @@ void Calibration::configure()
     else
     {
         // checksum ok, so it is likely we have valid data in the EEPROM
-        serial->println("CAL?"); // ask 
+        serial->println("CAL?"); // ask
         int start = millis();
         bool done = false;
         while ((millis() - start) < 250) // wait for an echo
         {
-            if (serial->available() > 0) 
+            if (serial->available() > 0)
             {
                 char bt = serial->read();
                 if (bt =='y')// there was an answer from a calibration engine.
                 {
                     done = true;
-                    this->calibrate();  
+                    this->calibrate();
                     serial->println("Calibration finished");
                     break;
                 }
@@ -452,13 +454,13 @@ bool Calibration::radio_fei_cal(FeiMeasurement &fei)
     fei.min = 30000;
     float sum_xi = 0.0;
     fei.success = false;
-    
+
     long sum_xxi=0; // sum of squares of measured FEI
-    
+
     for (int i =0; i< fei.num_averages; i++)
     {
         uint8_t done =0;
-        long st = millis(); // timestamp 
+        long st = millis(); // timestamp
         do{
             if (Mac->radio_receive(false)) // non blocking version
             {
@@ -466,14 +468,17 @@ bool Calibration::radio_fei_cal(FeiMeasurement &fei)
                 serial->print("rx ");
                 if ((uint8_t)Mac->rxpacket.payload[TARGETID] == 22) //?? needs testing!!!
                 {
-                    serial->print("Fei = "); serial->print(Mac->rxpacket.FEI); serial->print(" Rssi = "); serial->print(Mac->rxpacket.RSSI);serial->println("");
+                    serial->print("Fei = "); serial->print(Mac->rxpacket.FEI);
+                    serial->print(" Rssi = "); serial->print(Mac->rxpacket.RSSI);
+                    serial->print(" Temp_raw = "); serial->print(Mac->rxpacket.TEMP);
+                    serial->println("");
                     sum_xi += Mac->rxpacket.FEI;
                     if (fei.count==0) fei.max = Mac->rxpacket.FEI;
                     if (Mac->rxpacket.FEI > fei.max) fei.max = Mac->rxpacket.FEI;
-                    if (Mac->rxpacket.FEI < fei.min) fei.min = Mac->rxpacket.FEI;                    
+                    if (Mac->rxpacket.FEI < fei.min) fei.min = Mac->rxpacket.FEI;
                     fei.count++;
-                    fei.success = true; // need at least 1 valid measurement to calculate a average                    
-                    sum_xxi += Mac->rxpacket.FEI * Mac->rxpacket.FEI; // sum of squares for the standard deviation
+                    fei.success = true; // need at least 1 valid measurement to calculate a average
+                    sum_xxi = sum_xxi + ((long)Mac->rxpacket.FEI * Mac->rxpacket.FEI); // sum of squares for the standard deviation
                 }
                 else
                 {
@@ -484,22 +489,22 @@ bool Calibration::radio_fei_cal(FeiMeasurement &fei)
                 done =2;
         } while (!done);
         interrupts(); // radio_receive disables interrupts once it has received a good packet.
-    } 
+    }
     if (fei.success)
     {
         if (fei.count > 3)
         {
             fei.count -= 2;
             sum_xi = sum_xi - fei.max - fei.min;
-            sum_xxi -= fei.max*fei.max;
-            sum_xxi -= fei.min*fei.min;
+            sum_xxi -= (long)fei.max*fei.max;
+            sum_xxi -= (long)fei.min*fei.min;
         }
         if (fei.count > 1)
-        {            
+        {
             fei.stddev = ((float)sum_xxi - sum_xi * sum_xi / fei.count) / (fei.count-1);
             fei.stddev = sqrt(fei.stddev);
         }
-        fei.avg = (uint16_t) floor( sum_xi/fei.count +0.5 );  
+        fei.avg = (uint16_t) floor( sum_xi/fei.count +0.5 );
     }
     return fei.success;
 }

@@ -38,7 +38,7 @@
 // the RF protocol is completely binary, see https://github.com/nurazur/tino
 
 
-#define SKETCHNAME "TiNo 2.0.0 receive.ino Ver 02/09/2019"
+#define SKETCHNAME "TiNo 2.1.0 receive.ino Ver 24/02/2020"
 #define BUILD 9
 
 
@@ -57,8 +57,14 @@
 
 
 #include "configuration.h"
-#include <datalinklayer.h>
+#include "C:\Users\andre\Documents\TiNo\libraries\datalinklayer.h"
+
+/* For TiNo-HP, TiNo-LC, TiNo-SW1, TiNo-SW  the RFM69 library is included */
 #include <RFM69.h>
+
+/* For TiNo-HPCC the CC1101 library is included. comment out the RFM69 library and uncomment the below line. */
+//#include <CC1101.h>
+
 #include <EEPROM.h>
 #include "calibrate.h"
 
@@ -191,7 +197,7 @@ ISR(WDT_vect)
 /*****************************************************************************/
 /***                      Class instances                                  ***/
 /*****************************************************************************/
-RFM69 radio;
+RADIO radio;
 Configuration config;
 myMAC Mac(radio, config, (uint8_t*) KEY, mySerial);
 Calibration CalMode(config, mySerial, &Mac, BUILD, (uint8_t*) KEY);
@@ -273,12 +279,88 @@ float getVcc(long vref)
 }
 
 /**********************************************************************/
+/*    each interrupt occupies 2 bits in serial protocol definition    */
+/**********************************************************************/
+static void extract_interrupts(byte flags)
+{
+    uint8_t intpts =0;
+    if (flags & 0x2) intpts |= 0x1;
+    if (flags & 0x4) intpts |= 0x1<<2;
+    if (flags & 0x8) intpts |= 0x1<<4;
+    if (flags & 0x10) intpts |= 0x1<<6;
+    if (intpts !=0)
+    {
+        mySerial->print("&int=0x");
+        mySerial->print(intpts,HEX);
+    }
+}
+
+/**********************************************************************/
+/*      Bitarray implementation                                       */
+/**********************************************************************/
+
+static byte CountSynced[32]; // 256 bits
+
+byte getBit(int index)
+{
+    return (CountSynced[index/8] >> 7-(index & 0x7)) & 0x1;
+}
+
+void setBit(int index, byte value)
+{
+    CountSynced[index/8] = CountSynced[index/8] | (value & 0x1) << 7-(index & 0x7);  // does not work for 0es
+}
+
+/**********************************************************************/
+/*      Rolling Code implementation                                   */
+/**********************************************************************/
+#define TOLERANCE 10
+
+static bool rolling_code_is_valid(byte nodeid, byte count_new)
+{
+    bool packet_is_valid = false;
+    byte synced;
+    byte count_old;
+
+    EEPROM.get(512 + nodeid, count_old);
+    synced = getBit(nodeid);
+
+    if (synced)
+    {
+        int delta = count_new - count_old;
+        if (delta < 0) delta += 256;
+        if (delta > 0 && delta <= TOLERANCE)  // in sync
+        {
+            packet_is_valid = true;
+
+            //mySerial->print(",Node in sync. delta=");mySerial->print(delta);
+
+            if (delta >= TOLERANCE/2) // do write too often into EEPROM
+            {
+            EEPROM.put(512 + nodeid, count_new);
+            //mySerial->print(", Update EEPROM");
+            }
+        }
+        else // not in sync
+        {
+            // do nothing, just ignore this.
+            //mySerial->print(",Node not in sync. delta=");mySerial->print(delta);
+            packet_is_valid = false;
+        }
+    }
+
+    else
+    {
+        EEPROM.put(512 + nodeid, count_new);
+        setBit(nodeid,1);
+        //mySerial->print("First time. Now synced");
+        packet_is_valid = true;
+    }
+    return packet_is_valid;
+}
+/**********************************************************************/
 
 
-
-
-
-// init Setup
 void setup()
 {
     /***  INITIALIZE SERIAL PORT ***/
@@ -303,7 +385,7 @@ void setup()
 
     if (num_actions > 0 && num_actions <= MAX_NUM_ACTIONS)
     {
-        mySerial->print("number of actions: ");mySerial->println(num_actions);
+        mySerial->print("number of actions: "); mySerial->println(num_actions);
         actions = new action[num_actions];
     }
     else
@@ -330,15 +412,8 @@ void setup()
 
     for(int i=0; i< num_actions; i++)
     {
-        mySerial->print("action "); mySerial->print(i);mySerial->print("for Node: "); mySerial->print(actions[i].node);
-        mySerial->print(", Port: "); mySerial->print(actions[i].port);
         pinMode(actions[i].port, OUTPUT);
-
         digitalWrite(actions[i].port, actions[i].onoff>>7);
-        mySerial->print(", Mask: "); mySerial->print(actions[i].mask);
-        mySerial->print(", OnOff: "); mySerial->print(actions[i].onoff);
-
-        mySerial->println();
     }
 
     /*************  INITIALIZE PIN CHANGE INTERRUPTS ******************/
@@ -365,8 +440,7 @@ void setup()
 
     /***********************************************************/
     // normal initialization starts here
-    // Dont load eeprom data here, it is now done in the configuration (boot) routine.EEPROM could be encrypted.
-    //EEPROM.get(0, config);
+    // Dont load eeprom data here, it is done in the configuration (boot) routine.EEPROM is encrypted.
 
      /***  INITIALIZE RADIO MODULE ***/
     mySerial->print("RF Chip = "); config.IsRFM69HW ?    mySerial->print("RFM69HCW") : mySerial->print("RFM69CW");  mySerial->println();
@@ -385,58 +459,82 @@ void loop()
 {
     Mac.radio_receive(false); // non- blocking
     {
-        //if (Mac.rxpacket.success || Mac.rxpacket.payload[NODEID] !=0) // show all packets, even erroneous ones
-        if (Mac.rxpacket.success) // only show goos packets
+        if (Mac.rxpacket.success) // only show good packets
         {
             // common for all formats
-            mySerial->print(Mac.rxpacket.payload[NODEID],DEC);mySerial->print(" ");
+            mySerial->print(Mac.rxpacket.payload[NODEID],DEC); mySerial->print(" ");
 
             // find out which protocol format is used
-            if (!(Mac.rxpacket.payload[FLAGS] & 0x20)) // bit 5 in Flags is 0, flags is xx0x xxxx
+            if (!(Mac.rxpacket.payload[FLAGS] & 0x60)) // bit 5 and bit 6 in Flags are 0, flags is x00x xxxx
             {
-                // This is the standard protocol for TiNo Senors or actors
+                // This is the standard protocol for TiNo Sensors / Actors, good for HTU21D, SHT2x, SHT3x, 1 DS18B20
                 Payload *pl = (Payload*) Mac.rxpacket.payload;
                 mySerial->print("v=");  mySerial->print(pl->supplyV);
                 mySerial->print("&c=");  mySerial->print(pl->count);
                 mySerial->print("&t=");  mySerial->print((pl->temp - 1000)*4);
                 mySerial->print("&h=");  mySerial->print(int(pl->humidity/2.0*100));
+                mySerial->print("&f=");  mySerial->print(pl->flags,HEX);
 
-                mySerial->print("&intr=0x");
-                int intpts =0;
-                if (pl->flags & 0x2) intpts |= 0x1;
-                if (pl->flags & 0x4) intpts |= 0x1<<2;
-                if (pl->flags & 0x8) intpts |= 0x1<<4;
-                if (pl->flags & 0x10) intpts |= 0x1<<6;
-                mySerial->print(intpts,HEX);
-                if (Mac.rxpacket.errorcode >=0) doaction(Mac.rxpacket.payload[NODEID], Mac.rxpacket.payload[FLAGS], actions, num_actions);
+                extract_interrupts(pl->flags);
+
+                bool rolling_code_ok = rolling_code_is_valid(pl->nodeid, pl->count);
+
+                if (Mac.rxpacket.errorcode >=0 && rolling_code_ok)
+                {
+                    doaction(Mac.rxpacket.payload[NODEID], Mac.rxpacket.payload[FLAGS], actions, num_actions);
+                }
+                mySerial->print("&sy=");
+                rolling_code_ok ? mySerial->print("1") : mySerial->print("0") ;
             }
-            else
-            {
-                // it is another packet type.
-                // Only data in the switch statement are interesting.
-                mySerial->print(Mac.rxpacket.payload[TARGETID]); mySerial->print(";");
-                mySerial->print(Mac.rxpacket.payload[NODEID]); mySerial->print(";");
-                mySerial->print("0x");mySerial->print(Mac.rxpacket.payload[FLAGS],HEX); mySerial->print(";");
 
-                switch (Mac.rxpacket.payload[FLAGS] & 0x0f)
+            else if ((Mac.rxpacket.payload[FLAGS] >> 5) == 0x2) // TiNo ACK Packet: 010x xxxx
+            {
+                PayloadAck *pl = (PayloadAck*)Mac.rxpacket.payload;
+
+                mySerial->print("&f=");  mySerial->print(pl->flags,HEX);
+                //fei  //can't report at this time  (no tag)
+                mySerial->print("&c=");  mySerial->print(pl->count);
+                mySerial->print("&t=");  mySerial->print(pl->temp);
+                //RSSI;   //can't report at this time.
+
+            }
+
+            else   // it is another packet type.
+            {
+                switch (Mac.rxpacket.payload[ALT_PACKET_TYPE])
                 {
                     case 1:
                         // string packet with length 16 (so we've got 13 bytes effective)
                         config.FecEnable ? Mac.rxpacket.payload[8] = 0 : Mac.rxpacket.payload[16] = 0;
-                        mySerial->print((char*)(Mac.rxpacket.payload+3)); mySerial->print(";");
+                        mySerial->print((char*)(Mac.rxpacket.payload+ALT_PACKET_TYPE+1)); mySerial->print(";");
                         break;
                     case 2:
                         // string packet with length 24 (so we've got 21 bytes effective)
                         Mac.rxpacket.payload[24] = 0;
-                        mySerial->print((char*)(Mac.rxpacket.payload+3)); mySerial->print(";");
+                        mySerial->print((char*)(Mac.rxpacket.payload+ALT_PACKET_TYPE+1)); mySerial->print(";");
+                        break;
+                    case 3:
+                        // BME280 with temperature, humidity and pressure data
+                        {
+                            PacketType3 *pl = (PacketType3*) Mac.rxpacket.payload;
+                            mySerial->print("v=");  mySerial->print(pl->supplyV);
+                            mySerial->print("&c=");  mySerial->print(pl->count);
+                            mySerial->print("&t=");  mySerial->print((pl->temp - 1000)*4);
+                            mySerial->print("&h=");  mySerial->print(int(pl->humidity/2.0*100));
+                            mySerial->print("&p=");  mySerial->print(pl->pressure);
+
+                            extract_interrupts(pl->flags);
+                        }
                         break;
                     default:
-                        mySerial->print("oups!;");
+                        // packet is invalid
+                        break;
                 }
 
             }
             mySerial->print("&rssi=");     mySerial->print(int(Mac.rxpacket.RSSI*10));
-            mySerial->print("&fo=");    mySerial->print(Mac.rxpacket.FEI, DEC);
+            mySerial->print("&fo=");    mySerial->print(int16_t(Mac.rxpacket.FEI*radio.FSTEP), DEC); // need to multiply with the resolution of the PLL (in Hz), but I don't need fractions of a Hz
+            if (config.FecEnable) { mySerial->print("&be=");  mySerial->print(Mac.rxpacket.numerrors); }
             mySerial->println("");
             Mac.rxpacket.payload[NODEID] =0;
         }

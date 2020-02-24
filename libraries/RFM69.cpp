@@ -6,23 +6,23 @@
 // **********************************************************************************
 // License
 // **********************************************************************************
-// This program is free software; you can redistribute it 
-// and/or modify it under the terms of the GNU General    
-// Public License as published by the Free Software       
-// Foundation; either version 3 of the License, or        
-// (at your option) any later version.                    
-//                                                        
-// This program is distributed in the hope that it will   
-// be useful, but WITHOUT ANY WARRANTY; without even the  
-// implied warranty of MERCHANTABILITY or FITNESS FOR A   
-// PARTICULAR PURPOSE. See the GNU General Public        
-// License for more details.                              
-//                                                        
-// You should have received a copy of the GNU General    
+// This program is free software; you can redistribute it
+// and/or modify it under the terms of the GNU General
+// Public License as published by the Free Software
+// Foundation; either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will
+// be useful, but WITHOUT ANY WARRANTY; without even the
+// implied warranty of MERCHANTABILITY or FITNESS FOR A
+// PARTICULAR PURPOSE. See the GNU General Public
+// License for more details.
+//
+// You should have received a copy of the GNU General
 // Public License along with this program.
 // If not, see <http://www.gnu.org/licenses/>.
-//                                                        
-// Licence can be viewed at                               
+//
+// Licence can be viewed at
 // http://www.gnu.org/licenses/gpl-3.0.txt
 //
 // Please maintain this license information along with authorship
@@ -42,7 +42,6 @@ using namespace std;
 
 extern long readVcc();
 
-//volatile byte RFM69::DATA[RF69_MAX_DATA_LEN];
 volatile byte RFM69::_mode;       // current transceiver state
 volatile byte GenericRadio::DATALEN;
 volatile uint8_t RFM69::STATUSREG;
@@ -92,15 +91,15 @@ bool RFM69::initialize(byte freqBand, byte networkID, byte txpower)
     /* 0x07 */ { REG_FRFMSB, (byte)(freqBand==BAND_315MHZ ? RF_FRFMSB_315 : (freqBand==BAND_433MHZ ? 0x6c : (freqBand==BAND_868MHZ ? RF_FRFMSB_865 : RF_FRFMSB_915))) },
     /* 0x08 */ { REG_FRFMID, (byte)(freqBand==BAND_315MHZ ? RF_FRFMID_315 : (freqBand==BAND_433MHZ ? 0x80 : (freqBand==BAND_868MHZ ? RF_FRFMID_865 : RF_FRFMID_915))) },
     /* 0x09 */ { REG_FRFLSB, (byte)(freqBand==BAND_315MHZ ? RF_FRFLSB_315 : (freqBand==BAND_433MHZ ? 0x00 : (freqBand==BAND_868MHZ ? RF_FRFLSB_865 : RF_FRFLSB_915))) },
-    
+
     // looks like PA1 and PA2 are not implemented on RFM69W, hence the max output power is 13dBm
     // +17dBm and +20dBm are possible on RFM69HW
     // +13dBm formula: Pout=-18+OutputPower (with PA0 or PA1**)
     // +17dBm formula: Pout=-14+OutputPower (with PA1 and PA2)**
     // +20dBm formula: Pout=-11+OutputPower (with PA1 and PA2)** and high power PA settings (section 3.3.7 in datasheet)
-    ///* 0x11 */ { REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | RF_PALEVEL_OUTPUTPOWER_11111}, 
+    ///* 0x11 */ { REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | RF_PALEVEL_OUTPUTPOWER_11111},
     ///* 0x13 */ { REG_OCP, RF_OCP_ON | RF_OCP_TRIM_95 }, //over current protection (default is 95mA)
-    
+
     // RXBW defaults are { REG_RXBW, RF_RXBW_DCCFREQ_010 | RF_RXBW_MANT_24 | RF_RXBW_EXP_5} (RxBw: 10.4khz)
     //* 0x19 */ { REG_RXBW, RF_RXBW_DCCFREQ_010 | RF_RXBW_MANT_24 | RF_RXBW_EXP_3 }, //(BitRate < 2 * RxBw) //41.7 kHz
     /* 0x19 for BR-19200:  */ { REG_RXBW, RF_RXBW_DCCFREQ_010 | RF_RXBW_MANT_16 | RF_RXBW_EXP_3 }, //62.5 kHz
@@ -130,7 +129,7 @@ bool RFM69::initialize(byte freqBand, byte networkID, byte txpower)
   pinMode(_slaveSelectPin, OUTPUT);
   digitalWrite(_slaveSelectPin, HIGH);
   SPI.begin();
-  
+
   do writeReg(REG_SYNCVALUE1, 0xaa); while (readReg(REG_SYNCVALUE1) != 0xaa); // verstehe ich nicht!
   do writeReg(REG_SYNCVALUE1, 0x55); while (readReg(REG_SYNCVALUE1) != 0x55);
 
@@ -143,17 +142,17 @@ bool RFM69::initialize(byte freqBand, byte networkID, byte txpower)
 
   setHighPower(_isRFM69HW); //called regardless if it's a RFM69W or RFM69HW
   setPowerLevel(txpower);
-  
+
   setMode(RF69_MODE_STANDBY);
-    while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // Wait for ModeReady
+  while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // Wait for ModeReady
   attachInterrupt(_interruptNum, RFM69::isr0, RISING);
 
   setFrequency(getFrequency()  + fdev);
-  
+
   selfPointer = this;
-  
+
   this->vcc_dac = readVcc();
-  
+
   interrupts();
   STATUSREG = SREG; // save state of interrupts
   return true;
@@ -194,7 +193,7 @@ void RFM69::setFrequency(uint32_t freq)
   writeReg(REG_FRFLSB, freq);
 }
 
- 
+
 
 
 /* 0 = no shaping
@@ -214,7 +213,7 @@ void RFM69::setMode(byte newMode)
 
     switch (newMode) {
         case RF69_MODE_TX:
-            writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_TRANSMITTER);           
+            writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_TRANSMITTER);
             break;
         case RF69_MODE_RX:
             writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_RECEIVER);
@@ -277,7 +276,7 @@ void RFM69::send(const void* buffer, byte bufferSize)
   writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   unsigned long now = millis();
   while (!canSend() && millis()-now < RF69_CSMA_LIMIT_MS) receiveDone();
-  
+
   sendFrame(buffer, bufferSize);
 }
 
@@ -306,21 +305,22 @@ void RFM69::sendFrame(const void* buffer, byte bufferSize)
 
 	for (byte i = 0; i < bufferSize; i++)
         SPI.transfer(((byte*)buffer)[i]);
-    
+
     unselect();
-	
+
     /* no need to wait for transmit mode to be ready since its handled by the radio */
     setMode(RF69_MODE_TX);
 
     unsigned long txStart = millis();
-    this->vcc_dac = readVcc();
+    //this->vcc_dac = readVcc();
     while (digitalRead(_interruptPin) == 0 && millis()-txStart < RF69_TX_LIMIT_MS); //wait for DIO0 to turn HIGH signalling transmission finish
-    //while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // Wait for ModeReady 
+    //while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // Wait for ModeReady
     setMode(RF69_MODE_STANDBY);
     if (_PaBoost) setHighPowerRegs(false);
+    this->vcc_dac = readVcc();
 }
 
-void RFM69::interruptHandler() 
+void RFM69::interruptHandler()
 {
   if (_mode == RF69_MODE_RX && (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY))
   {
@@ -330,12 +330,12 @@ void RFM69::interruptHandler()
 
     select();
     SPI.transfer(REG_FIFO & 0x7f);
-    
+
     DATALEN = SPI.transfer(0); // CRC bytes are not counted by DATALEN
 
 	DATALEN = DATALEN > RF69_MAX_DATA_LEN ? RF69_MAX_DATA_LEN : DATALEN; //precaution
 
-    
+
     if (DATALEN < 6) // need at least senderid, targetid and 1 payload byte min.
     {
         DATALEN = 0;
@@ -343,14 +343,14 @@ void RFM69::interruptHandler()
         receiveBegin();
         return;
     }
-   
+
     // now load the data
     for (byte i= 0; i < DATALEN; i++)
     {
       DATA[i] = SPI.transfer(0);
     }
     if (DATALEN<RF69_MAX_DATA_LEN) DATA[DATALEN]=0; //add null at end of string
-    
+
     unselect();
     //writeReg(REG_AFCFEI, RF_AFCFEI_AFCAUTO_OFF | RF_AFCFEI_AFCAUTOCLEAR_ON | RF_AFCFEI_AFC_CLEAR);
     setMode(RF69_MODE_RX);
@@ -378,12 +378,12 @@ void RFM69::receiveBegin() {
   interrupts();
 }
 
-bool RFM69::receiveDone() 
+bool RFM69::receiveDone()
 {
   noInterrupts(); //re-enabled in unselect() or via receiveBegin()
   if (_mode == RF69_MODE_RX && DATALEN>0)
   {
-    setMode(RF69_MODE_STANDBY); 
+    setMode(RF69_MODE_STANDBY);
     return true;
   }
   else if (_mode == RF69_MODE_RX)  //already in RX no payload yet
@@ -446,7 +446,7 @@ void RFM69::writeReg(byte addr, byte value)
 }
 
 /// Select the transceiver
-void RFM69::select() 
+void RFM69::select()
 {
 	STATUSREG= SREG;
 	noInterrupts();
@@ -467,7 +467,7 @@ void RFM69::select()
 }
 
 /// UNselect the transceiver chip
-void RFM69::unselect() 
+void RFM69::unselect()
 {
 	digitalWrite(_slaveSelectPin, HIGH);
 	#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)
@@ -491,34 +491,34 @@ void RFM69::promiscuous(bool onOff) {
 
 
 /*
-setHighPower is used for the RFM69HW RFM69HCW only. 
+setHighPower is used for the RFM69HW RFM69HCW only.
 To use normal Mode, call setHighPower(true). This uses PA1 only and should be used up to 13 dBm (PL 31)
 To use PA1 and PA2 in normal mode, call setHighPower(true, false, true). Use this in PL 30 and 31 (14 and 15 dBm)
 To use highest possible power, call setHighPower(true, true); Use this for PL 31, 30 and 29 (16, 17 and 18 dBm)
 */
-void RFM69::setHighPower(bool isRFM69HW, bool PaBoost, bool usePa1andPa2) 
+void RFM69::setHighPower(bool isRFM69HW, bool PaBoost, bool usePa1andPa2)
 {
     _isRFM69HW = isRFM69HW;
     _PaBoost = PaBoost;
-    
+
     if (_isRFM69HW)
     {
         if (_PaBoost) // RFM69HW --> Boost only makes sense with both PA's ON. Turn on PA 1 and PA 2 and set Pa Boost registers
         {
             writeReg(REG_OCP, RF_OCP_OFF);
-            writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON | _powerLevel); //enable P1 & P2 amplifier stages
+            writeReg(REG_PALEVEL, RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON | _powerLevel); //enable P1 & P2 amplifier stages
             setHighPowerRegs(true);
         }
         else if (usePa1andPa2) // turn on Pa 1 and Pa 2 but do not set boost registers
         {
             writeReg(REG_OCP, RF_OCP_ON);
-            writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON | _powerLevel); //enable P1 & P2 amplifier stages
+            writeReg(REG_PALEVEL, RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON | _powerLevel); //enable P1 & P2 amplifier stages
             setHighPowerRegs(false);
         }
         else // normal mode for up to 13+ dBm
         {
             writeReg(REG_OCP, RF_OCP_ON);
-            writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | _powerLevel); //enable P1 only
+            writeReg(REG_PALEVEL, RF_PALEVEL_PA1_ON | _powerLevel); //enable P1 only
             setHighPowerRegs(false);
         }
     }
@@ -532,7 +532,7 @@ void RFM69::setHighPower(bool isRFM69HW, bool PaBoost, bool usePa1andPa2)
 
 
 void RFM69::setHighPowerRegs(bool PaBoost) {
-    if (PaBoost) 
+    if (PaBoost)
     {
         writeReg(REG_TESTPA1, 0x5D );  //Boost
         writeReg(REG_TESTPA2, 0x7C );
@@ -554,7 +554,7 @@ void RFM69::setCS(byte newSPISlaveSelect) {
 void RFM69::readAllRegs()
 {
   byte regVal;
-    
+
   for (byte regAddr = 1; regAddr <= 0x4F; regAddr++)
     {
     select();
@@ -579,8 +579,8 @@ byte RFM69::readTemperature(byte calFactor)  //returns centigrade
   while ((readReg(REG_TEMP1) & RF_TEMP1_MEAS_RUNNING)) ;
   //return ~readReg(REG_TEMP2) + COURSE_TEMP_COEF + calFactor; //'complement'corrects the slope, rising temp = rising val
                                                                // COURSE_TEMP_COEF puts reading in the ballpark, user can add additional correction
-  return 166 - readReg(REG_TEMP2) - calFactor; 
-  }                                                  
+  return 166 - readReg(REG_TEMP2) - calFactor;
+  }
 
 
 
@@ -591,14 +591,14 @@ byte RFM69::readTemperature(byte calFactor)  //returns centigrade
   unsigned long temp_start;
   this->Temperature =0;
   byte counter=0;
-  
+
   for (int i=0; i<2; i++)
-  {    
+  {
       writeReg(REG_TEMP1, RF_TEMP1_MEAS_START);
       temp_start = micros();
       while (done==0)
       {
-          if (readReg(REG_TEMP1) & RF_TEMP1_MEAS_RUNNING) 
+          if (readReg(REG_TEMP1) & RF_TEMP1_MEAS_RUNNING)
           {
               if ((micros() - temp_start) > 500)
                     done = -1; // timeout
@@ -610,16 +610,16 @@ byte RFM69::readTemperature(byte calFactor)  //returns centigrade
           }
       }
 
-      TEMPREG = 166 - readReg(REG_TEMP2); 
+      TEMPREG = 166 - readReg(REG_TEMP2);
       if ((int)TEMPREG < 100)
       {
           this->Temperature += TEMPREG;
           counter++;
       }
   }
-  if (counter >0) 
+  if (counter >0)
       this->Temperature /= counter;
-  else 
+  else
       this->Temperature = -40;
   return (byte) done;
 }
