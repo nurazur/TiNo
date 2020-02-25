@@ -1,5 +1,5 @@
-// RFM69CW Sender for temperature / humidity Sensors with Watchdog. 
-// Supports Sensors with HTU21D, SHT20, SHT21, SHT25, SHT30, SHT31, SHT35, BME280, DS18B20 
+// RFM69CW Sender for temperature / humidity Sensors with Watchdog.
+// Supports Sensors with HTU21D, SHT20, SHT21, SHT25, SHT30, SHT31, SHT35, BME280, DS18B20
 // built for AVR ATMEGA328P
 // optional possibility to use  a 32.768 crystal to reduce sleep current to ~1.5 µA
 
@@ -26,8 +26,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// Licence can be viewed at                               
-// http://www.fsf.org/licenses/gpl.txt                    
+// Licence can be viewed at
+// http://www.fsf.org/licenses/gpl.txt
 
 // Please maintain this license information along with authorship
 // and copyright notices in any redistribution of this code
@@ -39,20 +39,20 @@
 // Uses LowPower from  https://github.com/rocketscream/Low-Power under creative commons attribution-sharealike 3.0 unported license. see https://creativecommons.org/licenses/by-sa/3.0/
 // Uses HTU21D_SoftI2C modified from https://github.com/enjoyneering/HTU21D under BSD licence, rewritten by nurazur for use of SoftwareWire
 // Uses SoftwareWire Version 1.4.1. from https://github.com/Testato/SoftwareWire under GNU General Public License v3.0
-// Uses a RFM69 Driver originally from LowPowerlab.com However this driver has been changed so much so that it is barely recognizable. 
-// Uses PinChangeInterrupt from https://github.com/NicoHood/PinChangeInterrupt under open source license, exact type is not specified but looks like GNU 
+// Uses a RFM69 Driver originally from LowPowerlab.com However this driver has been changed so much so that it is barely recognizable.
+// Uses PinChangeInterrupt from https://github.com/NicoHood/PinChangeInterrupt under open source license, exact type is not specified but looks like GNU
 // uses a modified BME280 Driver from https://github.com/finitespace/BME280 under GNU General Public License version 3 or later
-// Uses OneWire             // license terms not clearly defined. 
+// Uses OneWire             // license terms not clearly defined.
 // Uses DallasTemperature under GNU LGPL version 2.1 or any later version.
 // Uses SHT3x_sww.h - license: "Created by Risele for everyone's use (profit and non-profit)."
 
 /* Revision history:
-    Build 3:    
+    Build 3:
         Support for EEPROM selected MAC functions (Encryption, FEC, Interleaving)
         Support for external Crystal, compiler option (because of interfering ISR's)
         RFM69CW TX Gauss shaping adjustable
     Build 4:
-        Support for RFM69HCW, P1 Mode, P1+2 Mode, Pa Boost mode. 
+        Support for RFM69HCW, P1 Mode, P1+2 Mode, Pa Boost mode.
     Build 5:
         Add Serial port enable in Config settings
     Build 6:
@@ -61,16 +61,16 @@
     Build 7:
         FEI alignment in calibration
         EEPROM encrypted
-    Build 9: various improvements. VCC is now tested during TX Burst. Support DS18B20 Temperature Sensor, SHT30x, BME280  
+    Build 9: various improvements. VCC is now tested during TX Burst. Support DS18B20 Temperature Sensor, SHT30x, BME280
 */
 
 #define USE_RADIO
 
-#define FILENAME "TiNo 2.0.0 send.ino 02/09/2019"
+#define FILENAME "TiNo 2.1.0 Sensor.ino 24/02/2020"
 #define BUILD 9
 
 /*****    which Sensor  do you want to use? select 1 sensor only (2 sensors at your own risk)     *****/
-#define USE_HTU21D 
+#define USE_HTU21D
 //#define USE_DS18B20
 //#define USE_BME280
 //#define USE_SHT3X
@@ -88,8 +88,9 @@
 /*****************************************************************************/
 /***   Radio Driver Instance                                               ***/
 /*****************************************************************************/
-#include <RFM69.h>
-RFM69 radio;
+#include <RFM69.h>  // select this radio driver for RFM69HCW and RFM69CW Modules from HopeRF
+//#include <CC1101.h>  // select this driver for CC1101 Modules
+RADIO radio;
 
 /*****************************************************************************/
 /***  EEPROM Access  and device calibration                                ***/
@@ -139,14 +140,6 @@ Calibration CalMode(Config, mySerial, &Mac, BUILD, (uint8_t*) KEY);
 
 
 /*****************************************************************************/
-/***                            Packet Format                              ***/
-/*****************************************************************************/
-
-Payload tinytx; // the data we want to transmit
-
-
-
-/*****************************************************************************/
 /*** Sleep mode choice ***/
 /*****************************************************************************/
 uint16_t watchdog_counter;
@@ -186,9 +179,9 @@ void wakeUp3() { event_triggered |= 0x8; }
 #include "SoftwareWire.h"
 SoftwareWire *i2c = NULL;
 
-// if I2C bus has no pullups externally, you can use internal Pullups instead. 
+// if I2C bus has no pullups externally, you can use internal Pullups instead.
 // Internal pullup resistors are ~30kOHm. Since we are clocking slowly,
-// it works. However, they need to be disabled in sleep mode, because SoftwareWire 
+// it works. However, they need to be disabled in sleep mode, because SoftwareWire
 // keeps them enabled even if i2c is ended with end()
 #define USE_I2C_PULLUPS  true // use this for HTU21D in case no Pullups are mounted.
 //#define USE_I2C_PULLUPS false // use this in case external Pullups are used.
@@ -197,6 +190,7 @@ SoftwareWire *i2c = NULL;
 #ifdef USE_HTU21D
 #include "HTU21D_SoftwareWire.h"
 HTU21D_SoftI2C *myHTU21D =NULL;
+Payload tinytx; // data structure for air interface
 #endif
 
 static void Start_HTU21D(void)
@@ -213,7 +207,7 @@ static void Start_HTU21D(void)
     }
     else
     {
-        //blink(Config.LedPin, 3); 
+        //blink(Config.LedPin, 3);
         if (Config.SerialEnable) mySerial->println ("Could not find a  HTU21D");
     }
     #endif
@@ -224,14 +218,14 @@ static void Measure_HTU21D(float* temperature)
 {
 
     if (myHTU21D)
-    {              
+    {
         pinMode(Config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
         digitalWrite(Config.I2CPowerPin, HIGH); // turn Sensor on
         i2c->begin();
         myHTU21D->begin();
-        delay(50);             
+        delay(50);
         *temperature = myHTU21D->readTemperature();
-        tinytx.temp = (*temperature * 25.0 + 1000.5);  
+        tinytx.temp = (*temperature * 25.0 + 1000.5);
         tinytx.humidity = myHTU21D->readCompensatedHumidity(*temperature) * 2;
         if (USE_I2C_PULLUPS)
         {
@@ -243,17 +237,20 @@ static void Measure_HTU21D(float* temperature)
 
 }
 #endif
-    
+
 /**********     One-Wire and DS18B20     **********/
-#ifdef USE_DS18B20      
+#ifdef USE_DS18B20
 #include <DallasTemperature.h>       // GNU Lesser General Public License v2.1 or later
-#include <OneWire.h>                // license terms not clearly defined.  
+#include <OneWire.h>                // license terms not clearly defined.
 
-#define ONE_WIRE_BUS 5              // pin not maintained by the EEPROM configuration!
-#define ONE_WIRE_POWER 9 // I2C Power, for test.
+//#define ONE_WIRE_BUS A2            // pin not maintained by the EEPROM configuration!
+#define ONE_WIRE_BUS Config.SDAPin
+//#define ONE_WIRE_POWER 9 // I2C Power, for test.
+#define ONE_WIRE_POWER Config.I2CPowerPin
 
-OneWire oneWire(ONE_WIRE_BUS);
+OneWire *oneWire=NULL;
 DallasTemperature *ds18b20=NULL;
+Payload tinytx;
 
 static uint8_t start_ds18b20(DallasTemperature *sensor, byte PowerPin);
 
@@ -286,7 +283,8 @@ static void Start_DS18B20(void)
     digitalWrite(ONE_WIRE_POWER, HIGH); // turn DS18B20 sensor on
     delay(10); // Allow 10ms for the sensor to be ready
     // Start up the library
-    ds18b20 = new DallasTemperature(&oneWire);
+    oneWire= new OneWire(ONE_WIRE_BUS);
+    ds18b20 = new DallasTemperature(oneWire);
 
     uint8_t num_devices = start_ds18b20(ds18b20, ONE_WIRE_POWER);
     if (num_devices == 0)
@@ -295,9 +293,9 @@ static void Start_DS18B20(void)
         ds18b20 = NULL;
         stop_ds18b20(ONE_WIRE_POWER);
         if (Config.SerialEnable) mySerial->print("no Dallas DS18B20 found\n\r");
-        
+
     }
-    else 
+    else
     {
         if (Config.SerialEnable)
         {
@@ -311,14 +309,15 @@ static void Start_DS18B20(void)
 
 #ifdef USE_DS18B20
 static void Measure_DS18B20(float*temperature)
-{   
-    
+{
+
     if (ds18b20)
-        {   
-            if (start_ds18b20(ds18b20, ONE_WIRE_POWER) > 0)
+        {
+            uint8_t num_devices = start_ds18b20(ds18b20, ONE_WIRE_POWER);
+            if (num_devices > 0)
             {
-                ds18b20->requestTemperatures(); 
-                
+                ds18b20->requestTemperatures();
+
                 *temperature = ds18b20->getTempCByIndex(0);
                 tinytx.temp = floor(*temperature * 25 + 1000.5);
                 //mySerial->print("Temp: ");mySerial->print(*temperature); mySerial->println(" degC");
@@ -326,20 +325,26 @@ static void Measure_DS18B20(float*temperature)
                 stop_ds18b20(ONE_WIRE_POWER); // Turn off power Pin for DS18B20
             }
             delay(65); // add delay to allow wdtimer to increase in case its erroneous
+
+            //for (uint8_t i =1; i< num_devices; i++)
+            //{
+            //     mySerial->print("Temp "); mySerial->print(i); mySerial->print(": "); mySerial->print(ds18b20->getTempCByIndex(i)); mySerial->println(" degC");
+            //}
         }
-    
+
 }
 #endif
 
 /**********      BME280     **********/
 #ifdef USE_BME280
 #include <BME280_SoftwareWire.h>
-BME280_SoftwareWire *bme=NULL;   
+BME280_SoftwareWire *bme=NULL;
+PacketType3 tinytx; // special data type for air interface
 #endif
 
 static void Start_BME280(void)
 {
-    #ifdef USE_BME280   
+    #ifdef USE_BME280
     i2c->beginTransmission (0x76);
 
     if (i2c->endTransmission() == 0)
@@ -348,18 +353,19 @@ static void Start_BME280(void)
         bme = new BME280_SoftwareWire(i2c);
         //mySerial->println ("BME280 instance created.");
     }
-    #endif    
+    #endif
 }
 
 /**********      SHT30, SHT31, SHT35     **********/
 #ifdef USE_SHT3X
 #include <SHT3x_sww.h>
 SHT3x *mySHT3x=NULL;
+Payload tinytx;
 #endif
 
 static void Start_SHT3X(void)
 {
-    #ifdef USE_SHT3X   
+    #ifdef USE_SHT3X
     i2c->beginTransmission (0x44);
     if (i2c->endTransmission() == 0)
     {
@@ -371,11 +377,11 @@ static void Start_SHT3X(void)
     #endif
 }
 
-#ifdef USE_SHT3X   
+#ifdef USE_SHT3X
 static void Measure_SHT3x(float *temperature)
-{   
+{
     if (mySHT3x)
-        {              
+        {
             pinMode(Config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
             digitalWrite(Config.I2CPowerPin, HIGH); // turn Sensor on
             delay(250); // wait for the Sensor to power up completely.
@@ -383,7 +389,7 @@ static void Measure_SHT3x(float *temperature)
             mySHT3x->Begin();
             mySHT3x->GetData();
             *temperature = mySHT3x->GetTemperature();
-            tinytx.temp = (*temperature * 25.0 + 1000.5);  
+            tinytx.temp = (*temperature * 25.0 + 1000.5);
             tinytx.humidity = (mySHT3x->GetRelHumidity()*2);
             digitalWrite(Config.I2CPowerPin, LOW); // turn Sensor off
         }
@@ -398,26 +404,25 @@ static void Measure_BME280(float &temperature)
             float hum(NAN), pres(NAN);
             BME280b::TempUnit tempUnit(BME280b::TempUnit_Celcius);
             BME280b::PresUnit presUnit(BME280b::PresUnit_hPa);
-            
+
             pinMode(Config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
             digitalWrite(Config.I2CPowerPin, HIGH);
             i2c->begin();
             delay(20);
             bme->begin();
             delay(125);
-           
+
             bme->read(pres, temperature, hum, tempUnit, presUnit);
             digitalWrite(Config.I2CPowerPin, LOW);
-            tinytx.temp = (temperature * 25.0 + 1000.5);  
+            tinytx.temp = (temperature * 25.0 + 1000.5);
             tinytx.humidity = (hum*2);
-
+            tinytx.pressure = pres *100.0;
             mySerial->print("Pressure: ");
             mySerial->print(pres);
             mySerial->print(" hPa, ");
             mySerial->flush();
-            
+
             digitalWrite(Config.I2CPowerPin, LOW);
-            /***** TODO: don't know what to do with pressure *****/
         }
 }
 #endif
@@ -425,7 +430,7 @@ static void Measure_BME280(float &temperature)
 /*****************************************************************************/
 /****                         blink                                       ****/
 /*****************************************************************************/
-void activityLed (unsigned char state, unsigned int time = 0) 
+void activityLed (unsigned char state, unsigned int time = 0)
 {
   if (Config.LedPin) {
     pinMode(Config.LedPin, OUTPUT);
@@ -445,7 +450,7 @@ static void blink (byte pin, byte n = 3)
   if (pin)
   {
     pinMode(pin, OUTPUT);
-    for (byte i = 0; i < (2 * n)-1; i++) 
+    for (byte i = 0; i < (2 * n)-1; i++)
     {
       digitalWrite(pin, !digitalRead(pin));
       delay(100);
@@ -461,7 +466,7 @@ static void blink (byte pin, byte n = 3)
 */
 /*****************************************************************************/
 long readVcc() {
-  
+
   #if defined(__AVR_ATmega32U4__) || defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
       ADMUX = _BV(REFS0) | _BV(MUX4) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
   #elif defined (__AVR_ATtiny24__) || defined(__AVR_ATtiny44__) || defined(__AVR_ATtiny84__)
@@ -477,8 +482,6 @@ long readVcc() {
   uint8_t low  = ADCL; // must read ADCL first - it then locks ADCH
   uint8_t high = ADCH; // unlocks both
   long result = (high<<8) | low;
-  //result = 1125300L / result; // Back-Calculate Vcc (in mV); 1125300 = 1.1*1023*1000
-  //result = VREF / result;
   return result;
 }
 
@@ -496,7 +499,7 @@ float getVcc(long vref)
 static void setup_timer2()
 {
   // clock input to timer 2 from XTAL1/XTAL2
-  ASSR = bit (AS2);  
+  ASSR = bit (AS2);
   while (ASSR & 0x1f);
 
   // set up timer 2 to count up to 256 * 1024  (32768) = 8s
@@ -507,11 +510,11 @@ static void setup_timer2()
   //TCCR2B &= 0xF8; // timer off, CS0=0, CS1=0, CS2=0
 
   while (ASSR & 0x08);   // wait until OCR2A can be updated
-  OCR2A =  255;         // count to 255 (zero-relative)    
-  
+  OCR2A =  255;         // count to 255 (zero-relative)
+
 
   while (ASSR & 0x1f);   // update is busy
-  
+
   // enable timer interrupts
   TIMSK2 |= bit (OCIE2A);
 }
@@ -519,7 +522,7 @@ static void setup_timer2()
 #else
 
 // Enable / Disable ADC, saves ~230uA
-static void enableADC(bool b) 
+static void enableADC(bool b)
 {
   if (b == true){
     bitClear(PRR, PRADC); // power up the ADC
@@ -532,7 +535,7 @@ static void enableADC(bool b)
 }
 
 // send Avr into Power Save Mode
-static void goToSleep() 
+static void goToSleep()
 {
   set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Set sleep mode.
   sleep_enable(); // Enable sleep mode.
@@ -548,7 +551,7 @@ static void goToSleep()
 
 static void setup_watchdog(int timerPrescaler) {
   if (timerPrescaler > 9 ) timerPrescaler = 9; //Correct incoming amount if need be
-  byte bb = timerPrescaler & 7; 
+  byte bb = timerPrescaler & 7;
   if (timerPrescaler > 7) bb |= (1<<5); //Set the special 5th bit if necessary
   //This order of commands is important and cannot be combined
   MCUSR &= ~(1<<WDRF); //Clear the watchdog reset
@@ -557,7 +560,7 @@ static void setup_watchdog(int timerPrescaler) {
   WDTCSR |= _BV(WDIE); //Set the interrupt enable, this will keep unit from resetting after each int
 }
 #endif
- 
+
 
 
 
@@ -581,7 +584,7 @@ static const char* show_trigger(byte trigger)
         default:
             break;
     }
-    
+
     return triggerstr;
 }
 
@@ -602,7 +605,7 @@ static const char* show_pinmode(byte pinmode)
         default:
             pinmodestr = "UNKNOWN";
     }
-    
+
     return pinmodestr;
 }
 /*****************************************************************************/
@@ -616,13 +619,13 @@ static void print_eeprom(Stream *serial)
     serial->print("AdcCalValue = ");   serial->print(Config.AdcCalValue);     serial->println();
     serial->print("Senddelay = ");     serial->print(Config.Senddelay);       serial->println();
     serial->print("Frequencyband = "); serial->print(Config.Frequencyband);   serial->println();
-    serial->print("frequency = ");     serial->print(Config.frequency);       serial->println(); 
+    serial->print("frequency = ");     serial->print(Config.frequency);       serial->println();
     serial->print("TxPower = ");       serial->print(Config.TxPower);         serial->println();
     serial->print("RequestAck = ");    serial->print(Config.RequestAck);      serial->println();
     serial->print("LedCount = ");      serial->print(Config.LedCount);        serial->println();
-    serial->print("LedPin = ");        serial->print(Config.LedPin);          serial->println(); 
+    serial->print("LedPin = ");        serial->print(Config.LedPin);          serial->println();
     serial->print("RxPin = ");         serial->print(Config.RxPin);           serial->println();
-    serial->print("TxPin = ");         serial->print(Config.TxPin);           serial->println(); 
+    serial->print("TxPin = ");         serial->print(Config.TxPin);           serial->println();
     serial->print("SDAPin = ");        serial->print(Config.SDAPin);          serial->println();
     serial->print("SCLpin = ");        serial->print(Config.SCLPin);          serial->println();
     serial->print("I2CPowerPin = ");   serial->print(Config.I2CPowerPin);     serial->println();
@@ -649,11 +652,13 @@ static void print_eeprom(Stream *serial)
     serial->print("Fdev (Steps) = ");      serial->print(Config.FedvSteps);  serial->println();
 }
 
-
+#if (not defined USE_DS18B20) && (not defined USE_BME280) && (not defined USE_HTU21D) && (not defined USE_SHT3X)
+    Payload tinytx;
+#endif
 
 
 // init Setup
-void setup() 
+void setup()
 {
   #if F_CPU == 4000000L
     // Change to 4 MHz by changing clock prescaler to 2
@@ -668,7 +673,7 @@ void setup()
         pinMode(txPin, OUTPUT);
         mySerial = new SoftwareSerial(rxPin, txPin);
   #endif
-    
+
     mySerial->begin(SERIAL_BAUD);
 
     // output of filename without condition for debug purposes
@@ -680,22 +685,22 @@ void setup()
     /***     CALIBRATE?      ***/
     /***                     ***/
     CalMode.configure();
-  
-    if (Config.SerialEnable) print_eeprom(mySerial);
-    
-    /* 
+
+    //if (Config.SerialEnable) print_eeprom(mySerial);
+
+    /*
     PCIOxTrigger bits 0 and 1:
     0bxx00 LOW
     0bxx01 CHANGE
     0bxx10 FALLING (normal use case)
     0bxx11 RISING
-    
+
     PCIOxTrigger bits 2 and 3:
     0b00xx INPUT
     0b01xx OUTPUT
     0b10xx INPUT_PULLUP (normal use case)
     */
-     
+
     if (Config.PCI0Pin >=0)
     {
         pinMode(Config.PCI0Pin, (Config.PCI0Trigger >>2) );  // set the pin to input or input with Pullup
@@ -716,13 +721,13 @@ void setup()
         pinMode(Config.PCI3Pin, (Config.PCI3Trigger >>2));  // set the pin to input
         attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(Config.PCI3Pin), wakeUp3, Config.PCI3Trigger&0x3);
     }
-    
+
     #ifndef USE_CRYSTAL
         if (Config.SerialEnable) mySerial->println ("USING WDT");
     #else
         if (Config.SerialEnable) mySerial->println ("USING CRYSTAL TIMER");
     #endif
-    
+
     pinMode(Config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
     digitalWrite(Config.I2CPowerPin, HIGH);
     delay(5);
@@ -736,7 +741,7 @@ void setup()
     Start_SHT3X();
     Start_DS18B20();
 
-    
+
     digitalWrite(Config.I2CPowerPin, LOW);
     if (USE_I2C_PULLUPS)
     {
@@ -746,31 +751,33 @@ void setup()
     #ifdef USE_RADIO
     //mySerial->println ("Start Radio.");
     Mac.radio_begin(); // puts radio to sleep to save power.
-    
-    
+
     //mySerial->println ("Radio running.");
     // for debug: this makes sure we can read from the radio.
-  //byte version_raw = radio.readReg(REG_VERSION);
-  //mySerial->print ("Radio chip ver: "); mySerial->print(version_raw>>4, HEX); mySerial->print (" Radio Metal Mask ver: "); mySerial->print(version_raw&0xf, HEX); mySerial->println();
+    //byte version_raw = radio.readReg(REG_VERSION);
+    //mySerial->print ("Radio chip ver: "); mySerial->print(version_raw>>4, HEX); mySerial->print (" Radio Metal Mask ver: "); mySerial->print(version_raw&0xf, HEX); mySerial->println();
     #endif
-    
-    
+
+
     tinytx.targetid = Config.Gatewayid;
     tinytx.nodeid =   Config.Nodeid;
     tinytx.flags =    1; // LSB means "heartbeat"
     tinytx.humidity = 0;
- 
- 
+
+
 #ifndef USE_CRYSTAL
-    setup_watchdog(watchdog_wakeup);      // Wake up after 8 sec
-    PRR = bit(PRTIM1);          // only keep timer 0 going
+    if (Config.Senddelay != 0)
+    {
+        setup_watchdog(watchdog_wakeup);    // Wake up after 8 sec
+        PRR = bit(PRTIM1);                  // only keep timer 0 going
+    }
     enableADC(false);           // power down/disable the ADC
 #else
     setup_timer2();
 #endif
     analogReference(INTERNAL);  // Set the aref to the internal 1.1V reference
     watchdog_counter = 500;     // set to have an initial transmission when starting the sender.
-  
+
     if (Config.LedPin)
     {
         activityLed(1,1000); // LED on
@@ -779,65 +786,77 @@ void setup()
 
 void loop()
 {
-    #ifndef USE_CRYSTAL 
+    #ifndef USE_CRYSTAL
     goToSleep(); // goes to sleep for about 9 seconds and continues to execute code when it wakes up
     #else
-    static bool timer2_setup_done = false; 
+    static bool timer2_setup_done = false;
     if (Config.Senddelay != 0)
         LowPower.powerSave(SLEEP_FOREVER, ADC_OFF, BOD_OFF, TIMER2_ON);
     else
     {
-        if (Config.SerialEnable)
-        {
-            mySerial->println("go sleeping...");
-            mySerial->flush();
-        }
         timer2_setup_done = true;
         TCCR2B &= 0xF8; // timer 2 off, CS0=0, CS1=0, CS2=0
         LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
-    }   
+    }
     #endif
-    
+
     watchdog_expired = ((watchdog_counter >= Config.Senddelay) && (Config.Senddelay != 0)); // when Senddelay equals 0, sleeep forever and wake up only for events.
-    
-    if (watchdog_expired || event_triggered) 
+
+    if (watchdog_expired || event_triggered)
     {
-        #ifndef USE_CRYSTAL  
+        #ifndef USE_CRYSTAL
         enableADC(true); // power up/enable the ADC
         #endif
         tinytx.flags = 0;
-        float temperature;
+        float temperature=0;
         if (watchdog_expired)
-        {           
+        {
             tinytx.flags |= 0x1; // heartbeat flag
-            watchdog_counter = 0; 
+            watchdog_counter = 0;
             //mySerial->print("watchdog triggered.");
         }
-                
+        tinytx.targetid = Config.Gatewayid;
         if(event_triggered)
         {
             tinytx.flags |= (event_triggered << 1);
-        } 
-    
-       
-        long vref = (long)Config.AdcCalValue * Config.VccAtCalmV;
+            switch (event_triggered)
+            {
+                case 0x01:
+                    tinytx.targetid += (Config.PCI0Trigger >> 4);
+                    break;
+                case 0x02:
+                    tinytx.targetid += (Config.PCI1Trigger >> 4);
+                    break;
+                case 0x04:
+                    tinytx.targetid += (Config.PCI2Trigger >> 4);
+                    break;
+                case 0x08:
+                    tinytx.targetid += (Config.PCI3Trigger >> 4);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        long Vcal_x_ADCcal = (long)Config.AdcCalValue * Config.VccAtCalmV;
         #ifdef USE_RADIO
-            tinytx.supplyV  = vref / radio.vcc_dac; // the VCC measured during last TX Burst. 
+            tinytx.supplyV  = Vcal_x_ADCcal / radio.vcc_dac; // the VCC measured during last TX Burst.
         #else
-            tinytx.supplyV  = vref / readVcc();
+            tinytx.supplyV  = Vcal_x_ADCcal / readADC();
         #endif
         tinytx.count++;
-        
+
         #ifdef USE_HTU21D
         Measure_HTU21D(&temperature);
         #endif
-        
+
         #ifdef USE_SHT3X
         Measure_SHT3x(&temperature);
         #endif
-        
+
         #ifdef USE_BME280
         Measure_BME280(temperature);
+        tinytx.flags |= 0x20; // mark as alternate protocol
         #endif
 
         #ifdef USE_DS18B20
@@ -851,12 +870,12 @@ void loop()
             #else
                 temperature = 12.34;
             #endif
-            tinytx.temp = floor (temperature * 25 + 1000.5); 
-            if (tinytx.count == 0) tinytx.humidity++;       // use humidity as a second counter byte, so we get a 16 bit counter
+
+            tinytx.temp = floor (temperature * 25 + 1000.5);
             if (Config.Senddelay != 0) delay(65); // add delay to allow wdtimer to increase in case its erroneous
         }
         #endif
-        
+
         if (Config.SerialEnable)
         {
             //mySerial->print("Sensor measurement: ");
@@ -864,8 +883,8 @@ void loop()
             mySerial->print(" %RH\t");
             mySerial->print(tinytx.temp/25.0-40.0); mySerial->println(" degC");
         }
- 
-        #ifdef USE_CRYSTAL 
+
+        #ifdef USE_CRYSTAL
         // workaround for timer2 setup failure (registers read OK but timer runs fast)
 
         if (watchdog_counter>0  && !timer2_setup_done)
@@ -875,27 +894,27 @@ void loop()
             timer2_setup_done =  true;
         }
         #endif
-        
-        
+
+
 
         bool ackreceived = false;
         #ifdef USE_RADIO
         temperature<0?  temperature-=0.5 : temperature+=0.5;
-        
+
         /****        uncomment if you want to use frequency correction                        ****/
-        //ackreceived = Mac.radio_send((uint8_t*) &tinytx, sizeof(Payload), Config.RequestAck, int(temperature));
+        //ackreceived = Mac.radio_send((uint8_t*) &tinytx, sizeof(tinytx), Config.RequestAck, int(temperature));
 
         /****         use this line if you don't need frequency correction (default)          ****/
-        ackreceived = Mac.radio_send((uint8_t*) &tinytx, sizeof(Payload), Config.RequestAck);
-        
+        ackreceived = Mac.radio_send((uint8_t*) &tinytx, sizeof(tinytx), Config.RequestAck);
+
         if (Config.RequestAck && Config.SerialEnable)
             (ackreceived) ? mySerial->println("Ack received.") : mySerial->println(" No Ack received.");
         #endif
-        
+
         #ifndef USE_CRYSTAL
         enableADC(false); // power down/disable the ADC
         #endif
-    
+
         if (event_triggered)
         {
             event_triggered = 0;
@@ -910,4 +929,3 @@ void loop()
         if (Config.SerialEnable) mySerial->flush();
     }
 }
-
