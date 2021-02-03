@@ -22,7 +22,7 @@ Die Leiterplatten passen in im Handel erhältlichen PVC Gehäusen, welche in etw
 - [Das Konzept](#das-konzept)
 - [Wie Funktionierts?](#wie-funktionierts)
 - [IDE Einrichten](#ide-einrichten)
-- [Software Kompilieren und Flashen](#software-kompilieren-und-flashen)
+- [Software Kompilieren und Flashen](#Kompilieren-und-Flashen)
 - [Nodes Konfigurieren](#nodes-konfigurieren)
 - [Nachbau](#nachbau)
 - [Elektronik](#elektronik)
@@ -86,7 +86,8 @@ Die TiNo Boards sind so einfach wie möglich aufgebaut:
 - Status LED
 - auf manchen Boards ist eine optionale SMA Buchse vorgesehen (externe Antenne)
 - alle Boards sind jeweils für ein bestimmtes Gehäuse konzipiert, können aber auch anderweitig eingesetzt werden.
-
+![TiNo HP Anschlüsse Oberseite](https://github.com/nurazur/TiNo/blob/master/TiNo-HP-Top-Pinout.jpg)
+![TiNo HP Anschlüsse Unterseite](https://github.com/nurazur/TiNo/blob/master/TiNo-HP-Bottom-Pinout.jpg)
 ### Softwarearchitektur
 ![TiNo Sensor Software Architektur](https://github.com/nurazur/TiNo/blob/master/sw_flow.jpg)
 
@@ -124,7 +125,9 @@ Folgende Bibliotheken braucht man zusätzlich zur Installation des TiNo Boards:
 - *HTU21D_SoftwareWire* (für den HTU21D Sensor Sketch)
 - *SHT3x_SoftwareWire*  (für den SHT3x Sketch)
 - *PinChangeInterrupt*  (Interrupts werden standardmässig unterstützt)
-- *Lowpower*            (wenn man einen externen Uhrenquarz benutzt)
+- *Lowpower*            (wenn man einen externen Uhrenquarz benutzt
+- *DallasTemperature*   (für den DS18B20 Sketch)
+- *OneWire*             (für den DS18B20 Sketch)
 
 Diese Bibliotheken sind nicht mit im TiNo Package enthalten (derzeit). *HTU21D_SoftwareWire* und *SHT3x_SoftwareWire* sind im TiNo Github Repository, müssen aber von Hand in das library Verzeichnis übertragen werden. Der Gedanke dahinter ist dass man die Bibliotheken ja auch für was anderes als TiNo verwenden kann.
 
