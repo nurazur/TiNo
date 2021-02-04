@@ -36,7 +36,7 @@ PCBs fit into low cost PVC boxes with the size of a matchbox that are readily av
 A TiNo sensor takes measurements periodically, for example a temperature reading, and transmits the result over the air to a base station (gateway). The gateway then processes the received data and stores them, which, for example, can be used by cloud services. TiNo can also be used as a monitoring system, for example it can report the opening of doors or windows.
 
 The development started searching for commercially available and affordable enclosures and estimating the required real estate for the PCB's.
-The result is a wireless sensor which has been optimized in all important areas in the size of a matchbox. I call it TINO = **TI**ny **NO**de. Later it will become the **TI**ny **N**etw**O**rk. Regarding software there is still a lot of work to do. 
+The result is a wireless sensor which has been optimized in all important areas in the size of a matchbox. I call it TINO = **TI**ny **NO**de. Later it will become the **TI**ny **N**etw**O**rk. Regarding software there is still a lot of work to do.
 
 ## Concept
 ### Minimal Cost:
@@ -87,7 +87,8 @@ TiNo Boards are developed as simple as possible:
 - Status LED
 - some Boards have a optional SMA socket for an external antenna
 - all PCB's are conceptually developed for defined enclosures, but can be used otherwise (of course!)
-
+![TiNo HP Anschlüsse Oberseite](https://github.com/nurazur/TiNo/blob/master/TiNo-HP-Top-Pinout.jpg)
+![TiNo HP Anschlüsse Unterseite](https://github.com/nurazur/TiNo/blob/master/TiNo-HP-Bottom-Pinout.jpg)
 ### Software architecture
 ![TiNo Sensor Software architecture](sw_flow.jpg)
 
