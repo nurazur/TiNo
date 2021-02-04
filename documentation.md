@@ -251,10 +251,10 @@ Here a example of a command line:
 
 `python tinocal_v009.py COM8 38400 -pwd -cp,receive_eeprom.cfg -ls -s -x -q`
 
-In this example tinocal connects to a TiNo board with COM8, 38400 Bd and processes the list of command line otions from left to right:
+In this example tinocal connects to a TiNo board with COM8, 38400 Bd and processes the list of command line options from left to right:
 1. `-pwd` sends the password that is provided in the source code of tinocal (can be changed by the user)
 2. `-cp,receive_eeprom.cfg` copy the content of the file `receive_eeprom.cfg` from PC to TiNo board.
-2. `-ls` list content of of the EEPROM.
+2. `-ls` list content of the EEPROM.
 3. `-s` calculate and save check checksum.
 4. `-x` leave calibration mode
 5. `-q` quit tinocal
@@ -294,7 +294,7 @@ Following parameters are defined in EEPROM:
 |USE_CRYSTAL_RTC | auto | **do not edit!** written by the sketch.
 |ENCRYPTION_ENABLE | 0 or 1 | 1 = encrypt messages
 |FEC_ENABLE | 0 or 1 | 1 = use Forward Error Correction
-|INTERLEAVER_ENABLE | 0 or 1 | 1 = use Interleaver
+|INTERLEAVER_ENABLE | 0 or 1 | 1 = use interleaver
 |EEPROM_VERSION_NUMBER | auto | **do not edit!** written by the sketch.
 |SOFTWAREVERSION_NUMBER| auto | **do not edit!** written by the sketch.
 |TXGAUSS_SHAPING | 0,1,2,3 | default: 0. determines BT of Gauss Shaping (advanced)
@@ -333,7 +333,7 @@ PCIxTrigger bits 2 and 3:
 
 Example:
 0b00001010 = 0x0A - 10 (Dec) = INPUT_PULLUP und FALLING
-This is the default. The internal pullup is part of the hardware debouncing circuit with a resistor and a capacitor.
+This is the default. The internal pullup is part of the hardware debounce circuit with a resistor and a capacitor.
 
 ## Building a TiNo
 Due to the limited bill of material (BOM) and its simple construction it is really straightforward to build a TiNo, provided some elementary solder skills
@@ -360,7 +360,7 @@ Two PCB designs are presented:
 The special thing about TiNo is its simplicity. The circuit diagram is really straightforward.
 
 - The core functionality is delivered by its microprocessor and the RF module. The RF module communicates over its SPI bus, these are GPIO's D10(SS) D11(MOSI), D12(MISO) und D13(SCK). Additionally the RF driver needs an external interrupt, GPIO 2 (D2 is used for this). This interrupt triggers when a packet has been received or a packet has been sent.
-- These exact GPIO's are being used by the ISP (In-System_Programmer) adapter, because flashing the processor uses the SPI bus as well.
+- These exact GPIO's are being used by the ISP (In-System-Programmer) adapter, because flashing the processor uses the SPI bus as well.
 - There is a 10kOhm pullup at the  SS pin (D10) to avoid the RF module to interfere on the SPI bus during the programming process. This pullup causes no additional current in sleep mode.
 - Optionally the PCB can be populated with an clock crystal (32.768 kHz). The crystal needs two load capacitors of 6pF or 12pF depending on its specification.
 - At start-up and for testing the device a LED is very useful. The LED is connected to digital GPIO 8 (D8). Depending on the TiNo PCB the LED can be used in SMD or wired form factor.
