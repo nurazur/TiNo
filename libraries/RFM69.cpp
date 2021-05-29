@@ -36,8 +36,10 @@
 
 #include <RFM69.h>
 #include <RFM69registers.h>
-#include "SPI_common.h"
-
+//#include "SPI_common.h"
+#include "SPI.h"
+//#define LIBCALL_ENABLEINTERRUPT
+//#include <EnableInterrupt.h>
 using namespace std;
 
 extern long readVcc();
@@ -112,11 +114,11 @@ bool RFM69::initialize(byte freqBand, byte networkID, byte txpower)
     /* 0x29 */ { REG_RSSITHRESH, 216 }, //must be set to dBm = (-Sensitivity / 2) - default is 0xE4=228 so -114dBm
     ///* 0x2d */ { REG_PREAMBLELSB, RF_PREAMBLESIZE_LSB_VALUE } // default 3 preamble bytes 0xAAAAAA
     /* 0x2e */ { REG_SYNCCONFIG, RF_SYNC_ON | RF_SYNC_FIFOFILL_AUTO | RF_SYNC_SIZE_2 | RF_SYNC_TOL_0 },
-    /* 0x2f */ { REG_SYNCVALUE1, 0x2D },      //attempt to make this compatible with sync1 byte of RFM12B lib
+    /* 0x2f */ { REG_SYNCVALUE1, 0x2D },      //make this compatible with sync1 byte of RFM12B lib
     /* 0x30 */ { REG_SYNCVALUE2, networkID }, //NETWORK ID
     ///* 0x37 */ { REG_PACKETCONFIG1, RF_PACKET1_FORMAT_VARIABLE | RF_PACKET1_DCFREE_OFF | RF_PACKET1_CRC_ON | RF_PACKET1_CRCAUTOCLEAR_OFF | RF_PACKET1_ADRSFILTERING_OFF },
     /* 0x37 */ { REG_PACKETCONFIG1, RF_PACKET1_FORMAT_VARIABLE | RF_PACKET1_DCFREE_OFF | RF_PACKET1_CRC_OFF | RF_PACKET1_CRCAUTOCLEAR_OFF | RF_PACKET1_ADRSFILTERING_OFF },
-		//* 0x39 */ { REG_NODEADRS, nodeID }, //turned off because we're not using address filtering
+        //* 0x39 */ { REG_NODEADRS, nodeID }, //turned off because we're not using address filtering
     /* 0x38 */ { REG_PAYLOADLENGTH, 66 }, //in variable length mode: the max frame size, not used in TX
     /* 0x3C */ { REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTART_FIFONOTEMPTY | RF_FIFOTHRESH_VALUE }, //TX on FIFO not empty
     /* 0x3d */ { REG_PACKETCONFIG2, RF_PACKET2_RXRESTARTDELAY_2BITS | RF_PACKET2_AUTORXRESTART_ON | RF_PACKET2_AES_OFF }, //RXRESTARTDELAY must match transmitter PA ramp-down time (bitrate dependent)
@@ -146,6 +148,7 @@ bool RFM69::initialize(byte freqBand, byte networkID, byte txpower)
   setMode(RF69_MODE_STANDBY);
   while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // Wait for ModeReady
   attachInterrupt(_interruptNum, RFM69::isr0, RISING);
+  //enableInterrupt(_interruptPin, RFM69::isr0, RISING);
 
   setFrequency(getFrequency()  + fdev);
 
@@ -243,7 +246,7 @@ void RFM69::sleep() {
 
 void RFM69::setAddress(byte addr)
 {
-	writeReg(REG_NODEADRS, addr);
+    writeReg(REG_NODEADRS, addr);
 }
 
 void RFM69::setNetwork(byte networkID)
@@ -286,45 +289,74 @@ void RFM69::Send(const void* buffer, byte bufferSize)
 }
 
 
-
-
 void RFM69::sendFrame(const void* buffer, byte bufferSize)
 {
     setMode(RF69_MODE_STANDBY); //turn off receiver to prevent reception while filling fifo
-    //if (this->do_frequency_correction) this->fdev = frequency_correct();
     while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // Wait for ModeReady
     writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00); // DIO0 is "Packet Sent"
     if (bufferSize > RF69_MAX_DATA_LEN) bufferSize = RF69_MAX_DATA_LEN;
 
-     if (_PaBoost) setHighPowerRegs(true);
+    if (_PaBoost) setHighPowerRegs(true);
+
+    writeReg(REG_AUTOMODES, RF_AUTOMODES_ENTER_FIFONOTEMPTY | RF_AUTOMODES_EXIT_PACKETSENT | RF_AUTOMODES_INTERMEDIATE_TRANSMITTER);
+    //write to FIFO
+    select();
+    SPI.transfer(REG_FIFO | 0x80);
+    SPI.transfer(bufferSize);
+    for (byte i = 0; i < bufferSize; i++)
+        SPI.transfer(((byte*)buffer)[i]);
+    unselect();
+
+    // no need to wait for transmit mode to be ready since its handled by the radio //
+    // setMode(RF69_MODE_TX);
+
+    unsigned long txStart = millis();
+    //this->vcc_dac = readVcc(); // original, works stable
+    //while (digitalRead(_interruptPin) == 0 && millis()-txStart < RF69_TX_LIMIT_MS); //wait for DIO0 to turn HIGH signalling transmission finish // ORIGINAL CODE
+    //while (!digitalRead(_interruptPin));
+    
+    //while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // Wait for ModeReady does not work! PacketSent Flag does not work at all!
+    while ((readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY)  && millis()-txStart < RF69_TX_LIMIT_MS  ); //works
+    writeReg(REG_AUTOMODES, RF_AUTOMODES_ENTER_OFF | RF_AUTOMODES_EXIT_OFF | RF_AUTOMODES_INTERMEDIATE_SLEEP);
+    if (_PaBoost) setHighPowerRegs(false);
+    this->vcc_dac = readVcc();
+}
+
+
+/*
+void RFM69::sendFrame(const void* buffer, byte bufferSize)
+{
+    setMode(RF69_MODE_STANDBY); //turn off receiver to prevent reception while filling fifo
+    while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // Wait for ModeReady
+    writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00); // DIO0 is "Packet Sent"
+    if (bufferSize > RF69_MAX_DATA_LEN) bufferSize = RF69_MAX_DATA_LEN;
+
+    if (_PaBoost) setHighPowerRegs(true);
 
     //write to FIFO
     select();
     SPI.transfer(REG_FIFO | 0x80);
-	SPI.transfer(bufferSize);
-
-	for (byte i = 0; i < bufferSize; i++)
+    SPI.transfer(bufferSize);
+    for (byte i = 0; i < bufferSize; i++)
         SPI.transfer(((byte*)buffer)[i]);
-
     unselect();
 
-    /* no need to wait for transmit mode to be ready since its handled by the radio */
+    // no need to wait for transmit mode to be ready since its handled by the radio 
     setMode(RF69_MODE_TX);
 
     unsigned long txStart = millis();
-    //this->vcc_dac = readVcc();
-    while (digitalRead(_interruptPin) == 0 && millis()-txStart < RF69_TX_LIMIT_MS); //wait for DIO0 to turn HIGH signalling transmission finish
-    //while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // Wait for ModeReady
+    while (digitalRead(_interruptPin) == 0 && millis()-txStart < RF69_TX_LIMIT_MS); //wait for DIO0 to turn HIGH signalling transmission finish // ORIGINAL CODE
     setMode(RF69_MODE_STANDBY);
     if (_PaBoost) setHighPowerRegs(false);
     this->vcc_dac = readVcc();
 }
+*/
 
 void RFM69::interruptHandler()
 {
   if (_mode == RF69_MODE_RX && (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY))
   {
-	RSSI = readRSSI(false);
+    RSSI = readRSSI(false);
     FEI = readFEI();
     setMode(RF69_MODE_STANDBY);
 
@@ -333,7 +365,7 @@ void RFM69::interruptHandler()
 
     DATALEN = SPI.transfer(0); // CRC bytes are not counted by DATALEN
 
-	DATALEN = DATALEN > RF69_MAX_DATA_LEN ? RF69_MAX_DATA_LEN : DATALEN; //precaution
+    DATALEN = DATALEN > RF69_MAX_DATA_LEN ? RF69_MAX_DATA_LEN : DATALEN; //precaution
 
 
     if (DATALEN < 6) // need at least senderid, targetid and 1 payload byte min.
@@ -355,6 +387,7 @@ void RFM69::interruptHandler()
     //writeReg(REG_AFCFEI, RF_AFCFEI_AFCAUTO_OFF | RF_AFCFEI_AFCAUTOCLEAR_ON | RF_AFCFEI_AFC_CLEAR);
     setMode(RF69_MODE_RX);
   }
+
   //RSSI = readRSSI(false);
   interrupts(); // brauchts des?
 }
@@ -448,36 +481,36 @@ void RFM69::writeReg(byte addr, byte value)
 /// Select the transceiver
 void RFM69::select()
 {
-	STATUSREG= SREG;
-	noInterrupts();
-	#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__) // tiny doesn't set SPI settings like this
-	#else // set SPI settings if not on tiny
-		// save current SPI settings
-		_SPCR = SPCR;
-		_SPSR = SPSR;
-		SPCR = (SPCR & ~0x0C) | 0x00;  // SPI.setDataMode(SPI_MODE0); (last hex number is the mode)
-		SPCR &= ~(_BV(DORD)); // this is for MSBFIRST; LSBFIRST would be SPCR |= _BV(DORD);
-		// clock divider: look this up in the datasheet
-		// DIV4: use 0x00   here: V
-		// DIV2: use 0x04   here: v
-		SPCR = (SPCR & ~0x03) | (0x00 & 0x03);
-		SPSR = (SPSR & ~0x01) | (0x00 & 0x01);
-	#endif
+    STATUSREG= SREG;
+    noInterrupts();
+    #if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__) // tiny doesn't set SPI settings like this
+    #else // set SPI settings if not on tiny
+        // save current SPI settings
+        _SPCR = SPCR;
+        _SPSR = SPSR;
+        SPCR = (SPCR & ~0x0C) | 0x00;  // SPI.setDataMode(SPI_MODE0); (last hex number is the mode)
+        SPCR &= ~(_BV(DORD)); // this is for MSBFIRST; LSBFIRST would be SPCR |= _BV(DORD);
+        // clock divider: look this up in the datasheet
+        // DIV4: use 0x00   here: V
+        // DIV2: use 0x04   here: v
+        SPCR = (SPCR & ~0x03) | (0x00 & 0x03);
+        SPSR = (SPSR & ~0x01) | (0x00 & 0x01);
+    #endif
   digitalWrite(_slaveSelectPin, LOW);
 }
 
 /// UNselect the transceiver chip
 void RFM69::unselect()
 {
-	digitalWrite(_slaveSelectPin, HIGH);
-	#if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)
-	#else
-		//restore SPI settings to what they were before talking to RFM69
-		SPCR = _SPCR;
-		SPSR = _SPSR;
-	#endif
-	SREG=STATUSREG;
-	//interrupts();
+    digitalWrite(_slaveSelectPin, HIGH);
+    #if defined(__AVR_ATtiny84__) || defined(__AVR_ATtiny44__)
+    #else
+        //restore SPI settings to what they were before talking to RFM69
+        SPCR = _SPCR;
+        SPSR = _SPSR;
+    #endif
+    SREG=STATUSREG;
+    //interrupts();
 }
 
 // ON  = disable filtering to capture all frames on network

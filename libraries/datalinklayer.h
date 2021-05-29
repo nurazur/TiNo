@@ -90,10 +90,10 @@ typedef struct
    uint8_t count;
    uint8_t packet_type =4;  // must be 4
    uint16_t supplyV :12;    // Supply voltage
-   uint16_t temp0 :12;   // Temperature reading
+   uint16_t temp :14;   // Temperature reading
    uint16_t temp1 :12;
    uint16_t temp2 :12;
-   uint8_t count_msb;
+   uint8_t count_msb :6;
 } PacketType4;
 
 typedef struct

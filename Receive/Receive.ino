@@ -57,7 +57,7 @@
 
 
 #include "configuration.h"
-#include "C:\Users\andre\Documents\TiNo\libraries\datalinklayer.h"
+#include <datalinklayer.h>
 
 /* For TiNo-HP, TiNo-LC, TiNo-SW1, TiNo-SW  the RFM69 library is included */
 #include <RFM69.h>
@@ -522,6 +522,19 @@ void loop()
                             mySerial->print("&t=");  mySerial->print((pl->temp - 1000)*4);
                             mySerial->print("&h=");  mySerial->print(int(pl->humidity/2.0*100));
                             mySerial->print("&p=");  mySerial->print(pl->pressure);
+
+                            extract_interrupts(pl->flags);
+                        }
+                        break;
+                    case 4:
+                        {
+                            Serial.println("Type 4");
+                            PacketType4 *pl = (PacketType4*) Mac.rxpacket.payload;
+                            mySerial->print("v=");  mySerial->print(pl->supplyV);
+                            mySerial->print("&c=");  mySerial->print(pl->count);
+                            mySerial->print("&t=");  mySerial->print((pl->temp - 1000)*4);
+                            mySerial->print("&t1=");  mySerial->print((pl->temp1 - 1000)*4);
+                            mySerial->print("&t2=");  mySerial->print((pl->temp2 - 1000)*4);
 
                             extract_interrupts(pl->flags);
                         }
