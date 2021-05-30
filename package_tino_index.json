@@ -73,6 +73,23 @@
                   { "name": "Tiny Node" }
                ],
                "toolsDependencies":[]
+            },
+            {
+               "name": "Tiny Node AVR Boards",
+               "architecture": "avr",
+               "version": "2.2.0",
+               "category": "Contributed",
+               "url": "https://github.com/nurazur/TiNo/releases/download/v2.2.0/tino-avr_2.2.0.zip",
+               "archiveFileName": "tino-avr_2.2.0.zip",
+               "checksum": "SHA-256:EEB35495C12EF5AAABE88C13E621B2420EC1E2AD462EC5D95D5EFEA7FD5F0F3A",
+               "size": "49152",
+               "help":{
+                  "online":"https://github.com/nurazur/TiNo/blob/master/dokumentation.md"
+               },
+               "boards":[
+                  { "name": "Tiny Node" }
+               ],
+               "toolsDependencies":[]
             }
          ],
          "tools":[]
