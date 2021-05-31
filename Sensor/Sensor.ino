@@ -1100,7 +1100,7 @@ void loop()
                 temperature = 12.34;
             #endif
             if (Config.Senddelay != 0) delay(65); // add delay to allow wdtimer to increase in case its erroneous
-        }
+
         #endif
 
         tinytx.temp = floor (temperature * 25 + 1000.5);
