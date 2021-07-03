@@ -528,7 +528,7 @@ void loop()
                         break;
                     case 4:
                         {
-                            Serial.println("Type 4");
+                            //Serial.println("Type 4");
                             PacketType4 *pl = (PacketType4*) Mac.rxpacket.payload;
                             mySerial->print("v=");  mySerial->print(pl->supplyV);
                             mySerial->print("&c=");  mySerial->print(pl->count);

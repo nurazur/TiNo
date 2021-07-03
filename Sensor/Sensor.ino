@@ -504,7 +504,7 @@ static void Start_MAX31865(void)
 {
     pinMode(RTD_CS_PIN, INPUT_PULLUP);  // SPI SS (avoid becoming SPI Slave)
 
-    Serial.println("starting MAX31865");
+    Serial.println("starting MAX31865");Serial.flush();
 
     #ifdef PT1000
     // For PT 1000 (Ref on breakout board = 3900 Ohms 0.1%)
