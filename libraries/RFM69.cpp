@@ -313,10 +313,12 @@ void RFM69::sendFrame(const void* buffer, byte bufferSize)
     unsigned long txStart = millis();
     //this->vcc_dac = readVcc(); // original, works stable
     //while (digitalRead(_interruptPin) == 0 && millis()-txStart < RF69_TX_LIMIT_MS); //wait for DIO0 to turn HIGH signalling transmission finish // ORIGINAL CODE
-    //while (!digitalRead(_interruptPin));
     
     //while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // Wait for ModeReady does not work! PacketSent Flag does not work at all!
     while ((readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY)  && millis()-txStart < RF69_TX_LIMIT_MS  ); //works
+    #if (F_CPU >1000000L)
+    delayMicroseconds(400); // need a delay because the FIFONOTEMPTY goes low before the packet is sent.
+    #endif
     writeReg(REG_AUTOMODES, RF_AUTOMODES_ENTER_OFF | RF_AUTOMODES_EXIT_OFF | RF_AUTOMODES_INTERMEDIATE_SLEEP);
     if (_PaBoost) setHighPowerRegs(false);
     this->vcc_dac = readVcc();

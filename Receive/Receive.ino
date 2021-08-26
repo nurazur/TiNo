@@ -38,7 +38,7 @@
 // the RF protocol is completely binary, see https://github.com/nurazur/tino
 
 
-#define SKETCHNAME "TiNo 2.1.0 receive.ino Ver 24/02/2020"
+#define SKETCHNAME "TiNo 2.2.0 receive.ino Ver 01/06/2021"
 #define BUILD 9
 
 
