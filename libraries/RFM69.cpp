@@ -207,7 +207,7 @@ void RFM69::setFrequency(uint32_t freq)
 void RFM69::setDataShaping(uint8_t datashaping)
 {
     byte reg = readReg(REG_DATAMODUL) &0xfc;
-    writeReg(REG_DATAMODUL, reg & (datashaping&0x3));
+    writeReg(REG_DATAMODUL, reg | (datashaping&0x3));
 }
 
 void RFM69::setMode(byte newMode)
