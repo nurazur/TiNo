@@ -34,8 +34,8 @@
 // all coding a protocol implementation has to be done by a higher layer (Data link layer)
 
 
-#include <RFM69.h>
-#include <RFM69registers.h>
+#include "RFM69.h"
+#include "RFM69registers.h"
 //#include "SPI_common.h"
 #include "SPI.h"
 //#define LIBCALL_ENABLEINTERRUPT
@@ -81,6 +81,7 @@ int16_t RFM69::readFEI(void)
 //Note:    nodeID is not used anymore, this must be done in a higher layer
 bool RFM69::initialize(byte freqBand, byte networkID, byte txpower)
 {
+  (void) freqBand; // not used anymore
   const byte CONFIG[][2] =
   {
     /* 0x01 */ { REG_OPMODE, RF_OPMODE_SEQUENCER_ON | RF_OPMODE_LISTEN_OFF | RF_OPMODE_STANDBY },
@@ -90,9 +91,16 @@ bool RFM69::initialize(byte freqBand, byte networkID, byte txpower)
     /* 0x04 */ { REG_BITRATELSB, 0x86 }, //to fit better the setting in RFM12B
     /* 0x05 */ { REG_FDEVMSB, RF_FDEVMSB_30000}, // (FDEV + BitRate/2 <= 500Khz)
     /* 0x06 */ { REG_FDEVLSB, RF_FDEVLSB_30000},
-    /* 0x07 */ { REG_FRFMSB, (byte)(freqBand==BAND_315MHZ ? RF_FRFMSB_315 : (freqBand==BAND_433MHZ ? 0x6c : (freqBand==BAND_868MHZ ? RF_FRFMSB_865 : RF_FRFMSB_915))) },
-    /* 0x08 */ { REG_FRFMID, (byte)(freqBand==BAND_315MHZ ? RF_FRFMID_315 : (freqBand==BAND_433MHZ ? 0x80 : (freqBand==BAND_868MHZ ? RF_FRFMID_865 : RF_FRFMID_915))) },
-    /* 0x09 */ { REG_FRFLSB, (byte)(freqBand==BAND_315MHZ ? RF_FRFLSB_315 : (freqBand==BAND_433MHZ ? 0x00 : (freqBand==BAND_868MHZ ? RF_FRFLSB_865 : RF_FRFLSB_915))) },
+
+    // set frequency - just for initialization
+    /* 0x07 */ { REG_FRFMSB, RF_FRFMSB_865},
+    /* 0x08 */ { REG_FRFMID, RF_FRFMID_865},
+    /* 0x09 */ { REG_FRFLSB, RF_FRFLSB_865},
+
+    //* 0x07 */ { REG_FRFMSB, (byte)(freqBand==BAND_315MHZ ? RF_FRFMSB_315 : (freqBand==BAND_433MHZ ? 0x6c : (freqBand==BAND_868MHZ ? RF_FRFMSB_865 : RF_FRFMSB_915))) },
+    //* 0x08 */ { REG_FRFMID, (byte)(freqBand==BAND_315MHZ ? RF_FRFMID_315 : (freqBand==BAND_433MHZ ? 0x80 : (freqBand==BAND_868MHZ ? RF_FRFMID_865 : RF_FRFMID_915))) },
+    //* 0x09 */ { REG_FRFLSB, (byte)(freqBand==BAND_315MHZ ? RF_FRFLSB_315 : (freqBand==BAND_433MHZ ? 0x00 : (freqBand==BAND_868MHZ ? RF_FRFLSB_865 : RF_FRFLSB_915))) },
+
 
     // looks like PA1 and PA2 are not implemented on RFM69W, hence the max output power is 13dBm
     // +17dBm and +20dBm are possible on RFM69HW
@@ -165,6 +173,26 @@ bool RFM69::Initialize(byte freqBand, byte networkID, byte txpower)
 {
     return this->initialize(freqBand, networkID, txpower);
 }
+
+
+void RFM69::OpModeOOK()
+{
+    writeReg( REG_OPMODE, RF_OPMODE_SEQUENCER_OFF | RF_OPMODE_LISTEN_OFF | RF_OPMODE_STANDBY);
+    writeReg( REG_DATAMODUL, RF_DATAMODUL_DATAMODE_CONTINUOUSNOBSYNC | RF_DATAMODUL_MODULATIONTYPE_OOK | RF_DATAMODUL_MODULATIONSHAPING_00);
+}
+
+void RFM69::OOKTransmitBegin()
+{
+    this->OpModeOOK();
+    setMode(RF69_MODE_TX);
+}
+
+void RFM69::OOKTransmitEnd()
+{
+    //setMode(RF69_MODE_STANDBY);
+    sleep();
+}
+
 
 //return the frequency (in register word)
 uint32_t RFM69::getFrequency()
@@ -313,7 +341,8 @@ void RFM69::sendFrame(const void* buffer, byte bufferSize)
     unsigned long txStart = millis();
     //this->vcc_dac = readVcc(); // original, works stable
     //while (digitalRead(_interruptPin) == 0 && millis()-txStart < RF69_TX_LIMIT_MS); //wait for DIO0 to turn HIGH signalling transmission finish // ORIGINAL CODE
-    
+    //while (!digitalRead(_interruptPin));
+
     //while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // Wait for ModeReady does not work! PacketSent Flag does not work at all!
     while ((readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY)  && millis()-txStart < RF69_TX_LIMIT_MS  ); //works
     #if (F_CPU >1000000L)
@@ -343,7 +372,7 @@ void RFM69::sendFrame(const void* buffer, byte bufferSize)
         SPI.transfer(((byte*)buffer)[i]);
     unselect();
 
-    // no need to wait for transmit mode to be ready since its handled by the radio 
+    // no need to wait for transmit mode to be ready since its handled by the radio
     setMode(RF69_MODE_TX);
 
     unsigned long txStart = millis();

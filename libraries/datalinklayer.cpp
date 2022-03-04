@@ -43,7 +43,8 @@ myMAC::myMAC(GenericRadio &R, Configuration &C, uint8_t *K, Stream* S) : encrypt
 void myMAC::radio_begin(void)
 {
     radio.fdev = Cfg.FedvSteps;
-    radio.Initialize(Cfg.Frequencyband, Cfg.Networkid, Cfg.TxPower);
+    //radio.Initialize(Cfg.Frequencyband, Cfg.Networkid, Cfg.TxPower);
+    radio.Initialize(86, Cfg.Networkid, Cfg.TxPower); // 86 - preset the 868 MHz Band. Can be overridden by setFrequencyMHz()
     // PaBoost is for RF69HCW only.
     // PaBoost = 0 normal mode (PA1 only)
     // PaBoost = 1 for PA1 and PA2 use and activate high-Power registers.
@@ -61,22 +62,26 @@ void myMAC::radio_begin(void)
 // look up the correction table and calculate correction steps
 int16_t myMAC::radio_calc_temp_correction(int temp)
 {
+    // clamp Temperature
     if (temp > 105) temp = 105;
     if (temp < -30) temp = -30;
 
+    // search for entry in look-up table
     uint16_t index  =  (temp + 30) * 2 + sizeof(Cfg);
     int16_t coeff;
-    EEPROM.get(index, coeff);
+    EEPROM.get(index, coeff);  // this is ppm *1000
     float steps = coeff * Cfg.frequency / 1000 / radio.FSTEP;
 
     int16_t corr = int(steps < 0 ? steps -0.5 : steps+ 0.5);
+    /*
     serial->print("sizeof cfg: ");serial->print(sizeof(Cfg));
     serial->print(", index: ");serial->print(index);
     serial->print(", coeff: ");serial->print(coeff);
     serial->print(", steps: ");serial->print(steps);
     serial->print(", correction: ");serial->print(corr);
     serial->println();
-    return corr;
+    */
+    return corr; // frequency-steps
 }
 
 bool myMAC::radio_receive(bool blocking)
@@ -103,9 +108,10 @@ bool myMAC::radio_receive(bool blocking)
     if (done)
     {
         returncode =true;
+        rxpacket.datalen = radio.DATALEN;
         if ((radio.DATALEN % 8 == 0) || (radio.DATALEN % 4 == 0 && !Cfg.FecEnable))
         {
-            byte datalen = radio.DATALEN;
+            //byte datalen = radio.DATALEN;
             if (Cfg.InterleaverEnable)
             {
                 interleave ((unsigned char*)radio.DATA, radio.DATALEN, REVERSE);
@@ -113,8 +119,8 @@ bool myMAC::radio_receive(bool blocking)
 
             if (this->Cfg.FecEnable)
             {
-                datalen /=2;
-                if (this->coder.decode_block((unsigned char*)radio.DATA, (unsigned char*) &rxpacket.payload, datalen, rxpacket.numerrors))
+                rxpacket.datalen /=2;
+                if (this->coder.decode_block((unsigned char*)radio.DATA, (unsigned char*) &rxpacket.payload, rxpacket.datalen, rxpacket.numerrors))
                 {
                 }
                 else
@@ -132,7 +138,7 @@ bool myMAC::radio_receive(bool blocking)
             if (Cfg.EncryptionEnable)
             {
                 xxtea Xxtea((uint8_t*) encryption_key, (uint8_t*) &rxpacket.payload);
-                Xxtea.crypter(decrypt, datalen); //Decrypt it
+                Xxtea.crypter(decrypt, rxpacket.datalen); //Decrypt it
             }
 
             if (rxpacket.payload[TARGETID] == Cfg.Nodeid) // is the message for me?
@@ -187,6 +193,7 @@ bool myMAC::radio_send(uint8_t *data, uint8_t datalen, uint8_t requestAck, int16
 
 bool myMAC::radio_send(Payload &tinytx, uint8_t requestAck)
 {
+
     return this->radio_send((uint8_t*) &tinytx, sizeof(Payload), requestAck);
 }
 
@@ -280,6 +287,10 @@ bool myMAC::radio_send(uint8_t *data, uint8_t datalen, uint8_t requestAck)
     return ackreceived;
 }
 
+uint8_t myMAC::radio_read_temperature(uint8_t correction)
+{
+    return radio.readTemperature(correction);
+}
 
 uint8_t myMAC::extract_count(uint8_t *message)
 {

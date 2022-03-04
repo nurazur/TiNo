@@ -15,6 +15,7 @@ class GenericRadio{
         virtual bool receiveDone() = 0;
         virtual byte readTemperature(byte) = 0;
         virtual void send(const void*, byte) =  0;
+        virtual void OOKTransmitBegin() =0;
 
         byte *DATA;
         int fdev;

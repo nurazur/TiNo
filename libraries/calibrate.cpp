@@ -142,7 +142,11 @@ cs                  verify checksum and report
 a                   list configuration content, byte wise
 s                   calculate checksum and update
 m                   measure VCC with calibrated values
-fe                  measure FEI in RX mode from a reference signal and copy to configuration
+t                   send dummy packet
+to                  start continuous transmit
+ts                  stop continuous TX and put radio into sleep mode
+tt                  read radio temperature sensor, consider programmed offset.
+
 x                   exit calibration mode
 */
 
@@ -178,7 +182,7 @@ bool Calibration::parse (char* str2parse)
                     float val_f;
                     val_f = atof(ptr);
                     *((float*) (pcfg+addr)) = val_f;
-                    serial->print((float)*(pcfg+addr) , DEC);
+                    serial->print( *((float*)(pcfg+addr)), DEC);
                 }
                 else if (cmd[1] =='i') // write int
                 {
@@ -212,8 +216,10 @@ bool Calibration::parse (char* str2parse)
                 serial->println("");
             }
             else
+            {
                 error_message(str2parse);
                 return false;
+            }
         }
         else  // read command
         {
@@ -293,6 +299,8 @@ bool Calibration::parse (char* str2parse)
             serial->print(getVcc(vref), DEC);
             serial->println("");
         }
+
+        /*
         else if (cmd[0] == 'f' && cmd[1] =='e') // measure FEI in RX mode and store in EEPROM
         {
             FeiMeasurement fei;
@@ -316,6 +324,59 @@ bool Calibration::parse (char* str2parse)
             }
 
         }
+        */
+
+        else if (cmd[0] == 't' && cmd[1] =='o')
+        {
+            // start TX in OOK mode, a continuous Sine Wave
+            // serial->println("Radio CW signal ON");
+            Mac->radio_ook_transmit_begin();
+
+        }
+
+
+        else if (cmd[0] == 't' && cmd[1] =='s')
+        {
+            // stop any TX and go to sleep.
+            // serial->println("Radio OFF");
+            Mac->radio_sleep();
+
+        }
+
+        else if (cmd[0] == 't' && cmd[1] =='t')
+        {
+            Mac->radio_begin();
+            serial->print((float)(Mac->radio_read_temperature(0) + Cfg.radio_temp_offset/10.0));
+            serial->println(" degC");
+        }
+
+        else if (cmd[0] == 't')  // send one dummy packet
+        {
+            Mac->radio_begin();
+
+            Payload dummypayload;
+            dummypayload.targetid = Cfg.Gatewayid;
+            dummypayload.nodeid = Cfg.Nodeid;
+            dummypayload.flags =1; // a heartbeat
+            dummypayload.count = 0;
+            dummypayload.supplyV = ((long)Cfg.AdcCalValue * Cfg.VccAtCalmV) / readVcc();
+            dummypayload.temp = floor (Mac->radio_read_temperature(0) * 25.0 + 1000.5);
+            dummypayload.humidity =100;  // 50%
+
+            if(Cfg.UseRadioFrequencyCompensation)
+            {
+                float temp = (float)(Mac->radio_read_temperature(0) + Cfg.radio_temp_offset/10.0);
+                //Mac->radio_send((uint8_t*) &dummypayload, sizeof(Payload), Cfg.RequestAck, (int16_t) temp);
+                Mac->radio_send((uint8_t*) &dummypayload, 8, Cfg.RequestAck, (int16_t) temp); // be compatible with old RX sketches
+            }
+            else
+            {
+                Mac->radio_send((uint8_t*) &dummypayload,8);
+            }
+
+            serial->println("send a packet");
+        }
+
 
         else if (cmd[0] == 'x') // exit calibration mode
         {
@@ -341,12 +402,13 @@ void Calibration::calibrate()
     Cfg.EepromVersionNumber = EEPROMVERSIONNUMBER;
     Cfg.SoftwareversionNumber = SoftwareVersion;
 
+    /*
     #ifdef USE_CRYSTAL
     Cfg.UseCrystalRtc = (uint8_t) 1;
     #else
     Cfg.UseCrystalRtc = (uint8_t) 0;
     #endif
-
+    */
     while (!cal_done)
     {
         while (serial->available() > 0)

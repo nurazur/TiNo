@@ -37,7 +37,7 @@
 #include <GenericRadio.h>
 
 #include "codec.h"
-#include "configuration.h"
+#include <configuration.h>
 
 #define TARGETID 0
 #define NODEID 1
@@ -50,9 +50,10 @@
 #define ALT_PACKET_TYPE 4
 
 // structure defining the actual data that are transmitted/received.
-// Classic Payload with 8 Bytes
+// Classic Payload with 8 Bytes, possibly extended to 12 bytes
 typedef struct
 {
+   //  8 Bytes minimum Payload
    uint8_t targetid;
    uint8_t nodeid;
    uint8_t flags;
@@ -60,11 +61,43 @@ typedef struct
    uint16_t count :8;
    uint16_t temp :12;   // Temperature reading
    uint8_t humidity;    // Humidity reading
-}  Payload;
+   
+   // optionally 4 more Bytes with pressure and brightness.
+   uint32_t pressure : 22;
+   uint32_t brightness : 10; // brightness or any other analog value.
+}  Payload; // aka PacketType0
+
+
+// Type to transmit strings, string length = 7 bytes, 
+// Packet length:12 bytes
+typedef struct
+{
+   uint8_t targetid;
+   uint8_t nodeid;
+   uint8_t flags;
+   uint8_t count;
+   uint8_t packet_type =1;  // must be 1
+   char    data[7];
+} PacketType1;
+
+
+// Type to transmit strings, string length = 11 bytes,
+// Packet length: 16 bytes
+typedef struct
+{
+   uint8_t targetid;
+   uint8_t nodeid;
+   uint8_t flags;
+   uint8_t count;
+   uint8_t packet_type =2;  // must be 2
+   char    data[11];
+} PacketType2;
+
 
 // structure defining alternate Packet type 3, a BME280
 // temperature, humidity and pressure (pressure has 24 bits)
 // Packet length: 12 Bytes
+// this packet type is obsolete from TiNo Version 3.0 onwards
 typedef struct
 {
    uint8_t targetid;
@@ -79,9 +112,9 @@ typedef struct
 } PacketType3;
 
 
-//structure defining alternate Packet type 4, up to 3 DS18B20
+//structure defining alternate Packet type 4, up to 3 DS18B20 or PT100
 // 14 bit resolution
-
+// Packet length: 12 Bytes
 typedef struct
 {
    uint8_t targetid;
@@ -95,6 +128,46 @@ typedef struct
    uint16_t temp2 :12;
    uint8_t count_msb :6;
 } PacketType4;
+
+
+//Packet type 5 with humidity sensor and an additional temperature reading (DS18B20 or MAX31865)
+typedef struct
+{
+   uint8_t targetid;
+   uint8_t nodeid;
+   uint8_t flags;
+   uint8_t count;
+   uint8_t packet_type =5;  // must be 5
+   uint16_t supplyV :12;    // Supply voltage
+   uint16_t temp :12;   // Temperature reading of humidity sensor
+   uint8_t humidity;    // Humidity reading
+   uint32_t temp1:14;
+   uint32_t brightness:10;
+} PacketType5;
+
+//Packet type 6 is an alarm-type packet.
+// the alarm-type signals which measurement has triggered the alarm:
+// 1 = temperature
+// 2 = humidity
+// 3 = pressure
+// 4 = brightness
+// 5 = temp1
+// 6 = temp2
+// 7 = supplyVoltage
+enum alarm_t {temp=1,humidity,pressure,brightness,temp1,temp2,supplyV};
+
+//value is the measurement value according to alarm_type
+typedef struct
+{
+   uint8_t targetid;
+   uint8_t nodeid;
+   uint8_t flags;
+   uint8_t count;
+   uint8_t packet_type = 6;  // must be 6
+   uint8_t alarm_type; // signals which sensor sends an alarm
+   uint16_t value; 
+} PacketType6;
+
 
 typedef struct
 {
@@ -112,6 +185,7 @@ typedef struct
 typedef struct
 {
     uint8_t     payload[64]; // max message length
+    uint8_t     datalen;
     float       RSSI;
     int16_t     FEI;
     int8_t      TEMP;
@@ -128,12 +202,15 @@ class myMAC {
         myMAC(GenericRadio &Radio, Configuration &config, uint8_t *EncryptionKey = NULL, Stream* ser = &Serial);
         void set_encryption_key(uint8_t *Key);
         void radio_begin(void);
+        void radio_sleep(){radio.sleep();}
+        void radio_ook_transmit_begin(){radio.OOKTransmitBegin();}
         int16_t radio_calc_temp_correction(int temp);
         bool radio_receive(bool blocking=false);
         bool radio_send(Payload &tinytx, uint8_t requestAck=0);
         bool radio_send(uint8_t *data, uint8_t datalen, uint8_t requestAck=0);
         bool radio_send(uint8_t *data, uint8_t datalen, uint8_t requestAck, int16_t temperature);
-
+        uint8_t radio_read_temperature(uint8_t correction=0);
+        
         RadioRxPacket rxpacket;
         const uint8_t *encryption_key=NULL;
     private:

@@ -116,6 +116,9 @@ class RFM69 : public GenericRadio
     //bool initialize(byte freqBand, byte ID, byte networkID=1);
     bool initialize(byte freqBand, byte networkID=1, byte txpower=31);
     bool Initialize(byte freqBand, byte networkID=1, byte txpower=31); // for compatibility with RFM12 lib
+    void OpModeOOK();
+    void OOKTransmitBegin();
+    void OOKTransmitEnd();
     void setAddress(byte addr);
     void setNetwork(byte networkID);
     bool canSend();

@@ -38,12 +38,12 @@
 // the RF protocol is completely binary, see https://github.com/nurazur/tino
 
 
-#define SKETCHNAME "TiNo 2.2.0 receive.ino Ver 01/06/2021"
-#define BUILD 9
+#define SKETCHNAME "TiNo 3.0.1 receive.ino Ver 02/09/2021"
+#define BUILD 10
 
 
 #include <avr/sleep.h>
-
+#include <HardwareSerial.h>
 #define SERIAL_BAUD 38400
 #ifdef SOFTSERIAL
     #define RX_PIN 0
@@ -60,15 +60,45 @@
 #include <datalinklayer.h>
 
 /* For TiNo-HP, TiNo-LC, TiNo-SW1, TiNo-SW  the RFM69 library is included */
+//#include <RFM69.h>
 #include <RFM69.h>
-
 /* For TiNo-HPCC the CC1101 library is included. comment out the RFM69 library and uncomment the below line. */
 //#include <CC1101.h>
 
 #include <EEPROM.h>
 #include "calibrate.h"
 
-#define KEY  "TheQuickBrownFox"
+//#define KEY  "TheQuickBrownFox"
+#define KEY     "WiNW_AzurdelaMer"
+
+
+/*****************************************************************************/
+/***                            I2C Driver                                 ***/
+/*****************************************************************************/
+// SHT21/HTU21D connects through SoftwareWire, so that SCL and SDA can be any pin
+// Add pullup resistors between SDA/VCC and SCL/VCC if not yet provided on Module board
+#include "SoftwareWire.h"
+SoftwareWire *i2c = NULL;
+
+// if I2C bus has no pullups externally, you can use internal Pullups instead.
+// Internal pullup resistors are ~30kOHm. Since we are clocking slowly,
+// it works. However, they need to be disabled in sleep mode, because SoftwareWire
+// keeps them enabled even if i2c is ended with end()
+#define USE_I2C_PULLUPS  true // use this for HTU21D in case no Pullups are mounted.
+//#define USE_I2C_PULLUPS false // use this in case external Pullups are used.
+
+
+/*****************************************************************************/
+/***                       HTU21D                                          ***/
+/*****************************************************************************/
+
+#define USE_HTU21D
+
+#ifdef USE_HTU21D
+#include "HTU21D_SoftwareWire.h"
+HTU21D_SoftI2C *myHTU21D =NULL;
+#endif
+
 
 /*****************************************************************************/
 /***                       Actions                                         ***/
@@ -80,9 +110,10 @@ typedef struct {
   uint8_t onoff;    // type of action:  OFF (00) ON(01) TOGGLE (10) PULSE (11); Pulse length = 2^B, where B = bits [23456], B= (action[i] >>2) &0xf, C = default on power up, C = bit[7] 1= on, 0 = off
 } action;
 
-#define ADR_NUM_ACTIONS 318
+#define ADR_NUM_ACTIONS sizeof(Configuration)+272u
 #define ADR_ACTIONS   ADR_NUM_ACTIONS + 1
 #define MAX_NUM_ACTIONS 40
+
 action *actions;
 uint8_t num_actions;
 /*
@@ -116,7 +147,7 @@ onoff = 0x3 | (0x02 << 2); // B=2, 2^B = 4 * 0.5s = 2s
 
 unsigned char pulse_port=0;  // the port for which a pulse is defined and active.
 unsigned int pulse_duration=0; // counter
-
+void setup_watchdog(int timerPrescaler);
 
 void doaction (uint8_t nodeid, uint8_t flags, action actions[], uint8_t num_actions)
 {
@@ -160,6 +191,57 @@ void doaction (uint8_t nodeid, uint8_t flags, action actions[], uint8_t num_acti
         }
     }
 }
+
+
+static void Start_HTU21D(Configuration &Config)
+{
+
+    #ifdef USE_HTU21D
+    i2c->beginTransmission (HTDU21D_ADDRESS);
+    if (i2c->endTransmission() == 0)
+    {
+        if (Config.SerialEnable) mySerial->println ("Found HTU21D");
+        myHTU21D = new HTU21D_SoftI2C(i2c);
+        delay(100);
+        myHTU21D->begin();
+        myHTU21D->setResolution(HTU21D_RES_RH10_TEMP13);
+    }
+    else
+    {
+        //blink(Config.LedPin, 3);
+        if (Config.SerialEnable) mySerial->println ("Could not find a HTU21D");
+    }
+    #endif
+}
+
+
+
+static bool Measure_HTU21D(float &temperature, float &humidity, Configuration &Config)
+{
+    #ifdef USE_HTU21D
+    if (myHTU21D)
+    {
+        pinMode(Config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
+        digitalWrite(Config.I2CPowerPin, HIGH); // turn Sensor on
+        i2c->begin();
+        myHTU21D->begin();
+        delay(50);
+        temperature = myHTU21D->readTemperature();
+        humidity = myHTU21D->readCompensatedHumidity(temperature);
+        if (USE_I2C_PULLUPS)
+        {
+            pinMode(Config.SDAPin, INPUT);
+            pinMode(Config.SCLPin, INPUT);
+        }
+        digitalWrite(Config.I2CPowerPin, LOW); // turn Sensor off
+        return true;
+    }
+    #endif
+    return false;
+}
+
+
+
 
 void setup_watchdog(int timerPrescaler)
 {
@@ -360,6 +442,8 @@ static bool rolling_code_is_valid(byte nodeid, byte count_new)
 }
 /**********************************************************************/
 
+unsigned long MeasurementIntervall_ms;
+unsigned long last_measurement_millis=0;
 
 void setup()
 {
@@ -378,6 +462,10 @@ void setup()
     /***     CALIBRATE?      ***/
     /***                     ***/
     CalMode.configure();
+
+    MeasurementIntervall_ms = config.Senddelay *8000L; // senddelay = Intervall in ms to measure Temp and adjust Radio Frequency
+
+
 
     /*************  INITIALIZE ACTOR MODULE ******************/
     EEPROM.get(ADR_NUM_ACTIONS, num_actions);
@@ -442,6 +530,25 @@ void setup()
     // normal initialization starts here
     // Dont load eeprom data here, it is done in the configuration (boot) routine.EEPROM is encrypted.
 
+
+    /* start i2c bus */
+    pinMode(config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
+    digitalWrite(config.I2CPowerPin, HIGH);
+    delay(5);
+    i2c = new SoftwareWire( config.SDAPin, config.SCLPin, USE_I2C_PULLUPS );
+    i2c->setClock(10000L);
+    i2c->begin();
+
+    Start_HTU21D(config);
+
+    digitalWrite(config.I2CPowerPin, LOW);
+    if (USE_I2C_PULLUPS)
+    {
+        pinMode(config.SDAPin, INPUT);
+        pinMode(config.SCLPin, INPUT);
+    }
+
+
      /***  INITIALIZE RADIO MODULE ***/
     mySerial->print("RF Chip = "); config.IsRFM69HW ?    mySerial->print("RFM69HCW") : mySerial->print("RFM69CW");  mySerial->println();
     mySerial->print ("FDEV_STEPS: ");mySerial->print(config.FedvSteps);mySerial->println();
@@ -457,6 +564,7 @@ void setup()
 
 void loop()
 {
+    static uint16_t count=0;
     Mac.radio_receive(false); // non- blocking
     {
         if (Mac.rxpacket.success) // only show good packets
@@ -467,13 +575,20 @@ void loop()
             // find out which protocol format is used
             if (!(Mac.rxpacket.payload[FLAGS] & 0x60)) // bit 5 and bit 6 in Flags are 0, flags is x00x xxxx
             {
-                // This is the standard protocol for TiNo Sensors / Actors, good for HTU21D, SHT2x, SHT3x, 1 DS18B20
+                // This is the standard protocol for TiNo Sensors / Actors, good for HTU21D, SHT2x, SHT3x, 1 DS18B20 or BME280 plus an LDR
                 Payload *pl = (Payload*) Mac.rxpacket.payload;
+
                 mySerial->print("v=");  mySerial->print(pl->supplyV);
                 mySerial->print("&c=");  mySerial->print(pl->count);
                 mySerial->print("&t=");  mySerial->print((pl->temp - 1000)*4);
                 mySerial->print("&h=");  mySerial->print(int(pl->humidity/2.0*100));
                 mySerial->print("&f=");  mySerial->print(pl->flags,HEX);
+
+                if (Mac.rxpacket.datalen >=12)
+                {
+                    mySerial->print("&p=");  mySerial->print(pl->pressure);
+                    mySerial->print("&br=");  mySerial->print(pl->brightness);
+                }
 
                 extract_interrupts(pl->flags);
 
@@ -504,7 +619,7 @@ void loop()
                 switch (Mac.rxpacket.payload[ALT_PACKET_TYPE])
                 {
                     case 1:
-                        // string packet with length 16 (so we've got 13 bytes effective)
+                        // string packet with length 16 (so we've got 13/5 bytes effective)
                         config.FecEnable ? Mac.rxpacket.payload[8] = 0 : Mac.rxpacket.payload[16] = 0;
                         mySerial->print((char*)(Mac.rxpacket.payload+ALT_PACKET_TYPE+1)); mySerial->print(";");
                         break;
@@ -530,13 +645,57 @@ void loop()
                         {
                             //Serial.println("Type 4");
                             PacketType4 *pl = (PacketType4*) Mac.rxpacket.payload;
-                            mySerial->print("v=");  mySerial->print(pl->supplyV);
-                            mySerial->print("&c=");  mySerial->print(pl->count);
-                            mySerial->print("&t=");  mySerial->print((pl->temp - 1000)*4);
+                            mySerial->print("v=");    mySerial->print(pl->supplyV);
+                            mySerial->print("&c=");   mySerial->print(pl->count);
+                            mySerial->print("&t=");   mySerial->print((pl->temp - 1000)*4);
                             mySerial->print("&t1=");  mySerial->print((pl->temp1 - 1000)*4);
                             mySerial->print("&t2=");  mySerial->print((pl->temp2 - 1000)*4);
 
                             extract_interrupts(pl->flags);
+                        }
+                        break;
+                    case 5:
+                        {
+                            PacketType5 *pl = (PacketType5*) Mac.rxpacket.payload;
+                            mySerial->print("v=");    mySerial->print(pl->supplyV);
+                            mySerial->print("&c=");   mySerial->print(pl->count);
+                            mySerial->print("&t=");   mySerial->print((pl->temp - 1000)*4);
+                            mySerial->print("&h=");   mySerial->print(int(pl->humidity/2.0*100));
+                            mySerial->print("&t1=");  mySerial->print((pl->temp1 - 1000)*4);
+                            mySerial->print("&br=");  mySerial->print(pl->brightness);
+                        }
+                        break;
+                    case 6:
+                        {
+                            PacketType6 *pl = (PacketType6*) Mac.rxpacket.payload;
+                            mySerial->print("&c=");   mySerial->print(pl->count);
+                            mySerial->print("&a=");   mySerial->print(pl->alarm_type);
+                            switch((alarm_t) pl->alarm_type)
+                            {
+                                case temp:
+                                    mySerial->print("&t="); mySerial->print((pl->value - 1000)*4);
+                                    break;
+                                case humidity:
+                                    mySerial->print("&h=");   mySerial->print(int(pl->value/2.0*100));
+                                    break;
+                                case pressure:
+                                    mySerial->print("&p=");  mySerial->print(pl->value);
+                                    break;
+                                case brightness:
+                                    mySerial->print("&br=");  mySerial->print(pl->value);
+                                    break;
+                                case temp1:
+                                    mySerial->print("&t1=");  mySerial->print((pl->value - 1000)*4);
+                                    break;
+                                case temp2:
+                                    mySerial->print("&t2=");  mySerial->print((pl->value - 1000)*4);
+                                    break;
+                                case supplyV:
+                                    mySerial->print("v=");  mySerial->print(pl->value);
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                         break;
                     default:
@@ -545,13 +704,13 @@ void loop()
                 }
 
             }
-            mySerial->print("&rssi=");     mySerial->print(int(Mac.rxpacket.RSSI*10));
-            mySerial->print("&fo=");    mySerial->print(int16_t(Mac.rxpacket.FEI*radio.FSTEP), DEC); // need to multiply with the resolution of the PLL (in Hz), but I don't need fractions of a Hz
+            mySerial->print("&rssi=");    mySerial->print(int(Mac.rxpacket.RSSI*10));
+            //mySerial->print("&fo=");    mySerial->print(int16_t(Mac.rxpacket.FEI*radio.FSTEP), DEC); // need to multiply with the resolution of the PLL (in Hz), but I don't need fractions of a Hz
             if (config.FecEnable) { mySerial->print("&be=");  mySerial->print(Mac.rxpacket.numerrors); }
             mySerial->println("");
             Mac.rxpacket.payload[NODEID] =0;
         }
-        else
+        else if (Mac.rxpacket.errorcode<0)
         {
          /* Errorcodes:
              -1:  could not decode FEC data (too many bit errors in codes)
@@ -573,6 +732,36 @@ void loop()
         event_triggered =0;
     }
 
+    if (MeasurementIntervall_ms >0)
+    {
+        if (millis() > last_measurement_millis)
+        {
+            last_measurement_millis = millis() + MeasurementIntervall_ms;
+
+            // measure temperature
+            float t, h=0;
+            if (!Measure_HTU21D(t,h,config))
+            {
+                t = radio.readTemperature(0) + config.radio_temp_offset/10.0;
+                mySerial->println("it is not possible to measure with HTU21D");
+            }
+
+            mySerial->print(config.Nodeid); mySerial->print(" ");
+            mySerial->print("c=");  mySerial->print(++count);
+            mySerial->print("&t=");  mySerial->print(t*100,0);
+            mySerial->print("&h=");  mySerial->print(h*100,0);
+
+            // adjust radio frequencuy according to FT table, if applicable
+            //mySerial->println("Temperature Measurement and Frequency Tuning.");
+            if (config.UseRadioFrequencyCompensation)
+            {
+                int fo_steps = config.FedvSteps - Mac.radio_calc_temp_correction(t);
+                radio.setFrequency((config.frequency * 1000000)/radio.FSTEP + fo_steps );
+                mySerial->print("&fo=");  mySerial->print((int)(fo_steps*radio.FSTEP));
+            }
+            mySerial->println();
+        }
+    }
 }
 
 

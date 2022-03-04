@@ -63,34 +63,322 @@
         FEI alignment in calibration
         EEPROM encrypted
     Build 9: various improvements. VCC is now tested during TX Burst. Support DS18B20 Temperature Sensor, SHT30x, BME280
+
+    Build 10:
+        one firmware for all sensors
+        support for LDR (brightness reading), requires a analog pin (A0 or A1)
+        choice of sleep mode can be set in configuration - WDT vs crystal timer
+        possible External Heartbeat using TPL5110
+        for each PCINT a individual Gateway ID (multi-channel remote control)
+        calibration mode: 't' sends a dummy packet
+        calibration mode: 'to' starts den OOK Modus (send a CW signal)
+        calibration mode: 'tt' retrieves the Tepmerature reading from the RFM69 chip
+        calibration mode: Offset for RFM69 temperature in configuration
+        Receiver can output locally measured sensor data (HTU21D only in this release)
 */
+#include "pins_arduino.h"
+#include "HardwareSerial.h"
 
 #define USE_RADIO
 
-#define FILENAME "TiNo 2.2.0 Sensor.ino 01/06/2021"
-#define BUILD 9
-
-/*****    which Sensor  do you want to use? select 1 sensor only (2 sensors at your own risk)     *****/
-#define USE_HTU21D
-//#define USE_DS18B20
-//#define USE_BME280
-//#define USE_SHT3X
-//#define USE_MAX31865
-//#define USE_PIR_ON_PCI1
-/****************************************************************************/
-
-#define NO_TEMPERATURE_SENSOR (not defined USE_HTU21D) && (not defined USE_SHT3X) && (not defined USE_BME280) && (not defined USE_DS18B20) &&(not defined USE_MAX31865)
-#define IS_HUMIDITY_SENSOR  (defined USE_HTU21D) || (defined USE_SHT3X) || (defined USE_BME280)
-/****************************************************************************/
-
-
-#include "pins_arduino.h"
-
+#define FILENAME "TiNo 3.0.1 Sender.ino 03/03/2022"
+#define BUILD 10
 
 /*****************************************************************************/
 /***   MAC                                                                 ***/
 /*****************************************************************************/
 #include <datalinklayer.h>
+
+
+
+/*****    which Sensor  do you want to use? select 1 sensor only (2 sensors at your own risk)     *****/
+#define USE_HTU21D
+//#define USE_BME280
+#define USE_DS18B20
+#define USE_SHT3X
+#define USE_MAX31865
+
+
+typedef struct
+{
+    byte HTU21D:1;
+    byte DS18B20:1;
+    byte BME280:1;
+    byte SHT3X:1;
+    byte MAX31865:1;
+    byte BRIGHTNESS:1;
+    byte Reserved:2;
+
+} UseBits;
+
+
+class sensors
+{
+    public:
+        UseBits use;
+
+
+        sensors (UseBits sensor_cfg)
+        {
+            this->use = sensor_cfg;
+            PacketLen =  0;
+            this->calc_packettype();
+            this->count(0);
+            this->temp1(0);
+            this->temp2(0);
+        }
+
+        int8_t calc_packettype(void)
+        {
+            // prefer SHT3x over HTU21D in case both are present.
+            // currently there is no Packet type for 2 humidity sensors.
+            if (use.HTU21D && use.SHT3X)
+            {
+                use.HTU21D=0;
+            }
+
+            // no packet type available for 2 humidity sensors. BME280 preferred.
+            if (use.BME280 && (use.HTU21D || use.SHT3X))
+            {
+                PacketType = 0;
+                use.HTU21D =0;
+                use.SHT3X =0; // don't use the humidity sensors in this case!
+            }
+
+            this->is_temperature_sensor = use.HTU21D || use.BME280 || use.DS18B20 || use.SHT3X || use.MAX31865;
+            this->is_humidity_sensor = use.HTU21D || use.BME280 || use.SHT3X;
+
+
+            // no explicit temperature sensor on board, i.e for Interrupts only like a remote control
+            if (!is_temperature_sensor)
+            {
+                PacketType = 0;
+            }
+            else if (use.HTU21D || use.SHT3X)
+            {
+                if (use.DS18B20 || use.MAX31865)
+                {
+                    PacketType = 5;  // 1 additional external Temp sensor
+                }
+                else
+                {
+                    // default
+                    PacketType = 0;
+                }
+            }
+
+            // air pressure
+            else if (use.BME280)
+            {
+                PacketType = 0;
+            }
+
+            // Temperature sensors only: up to 3
+            else if (use.DS18B20 || use.MAX31865)
+            {
+                if (!is_humidity_sensor)
+                {
+                    PacketType = 4;
+                }
+            }
+            else
+                PacketType =-1;
+
+            switch (PacketType)
+            {
+                case 0:
+                    pData = (uint8_t*) &t0;
+                    if (!use.BME280  && !use.BRIGHTNESS){
+                        PacketLen = 8;
+                    }
+                    else{
+                        PacketLen = sizeof(Payload);
+                    }
+                    break;
+                case 4:
+                    pData  = (uint8_t*) &t4;
+                    PacketLen = sizeof(PacketType4);
+                    t4.packet_type=4;
+                    use.BRIGHTNESS=0; // brightness not possible with packet type 4
+                    break;
+                case 5:
+                    pData= (uint8_t*) &t5;
+                    t5.packet_type=5;
+                    PacketLen = sizeof(PacketType5);
+                    break;
+                default:
+                    break;
+            }
+
+            return PacketType;
+        }
+
+        void humidity(uint8_t h)
+        {
+            switch(this->PacketType)
+            {
+                case 0:
+                    t0.humidity = h;
+                    break;
+                case 5:
+                    t5.humidity = h;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        void pressure(uint32_t p)
+        {
+            if (this->PacketType == 0)
+            {
+                t0.pressure = p;
+            }
+        }
+
+        void targetid(uint8_t t) {pData[0] = t;}
+        void nodeid  (uint8_t n) {pData[1] = n;}
+        void flags   (uint8_t f)
+        {
+            pData[2] = f;
+            if (this->PacketType !=0)
+                pData[2] |= 0x20;
+        }
+
+        uint8_t flags(void)
+        {
+            return pData[2];
+        }
+
+        void count(uint8_t c)
+        {
+            switch(this->PacketType)
+            {
+                case 0:
+                    t0.count = c;
+                    break;
+                case 4:
+                case 5:
+                    pData[3] = c;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        void increment_count(void)
+        {
+            switch(this->PacketType)
+            {
+                case 0:
+                    t0.count++;
+                    break;
+                case 4:
+                    t4.count++;
+                    if (t4.count == 0) t4.count_msb++;
+                    break;
+                case 5:
+                    t5.count++;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        void supplyV(uint16_t v)
+        {
+            switch(this->PacketType)
+            {
+                case 0:
+                    t0.supplyV = v;
+                    break;
+                case 4:
+                    t4.supplyV = v;
+                    break;
+                case 5:
+                    t5.supplyV = v;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        void temp(uint16_t t)
+        {
+            switch(this->PacketType)
+            {
+                case 0:
+                    t0.temp = t;
+                    break;
+                case 4:
+                    t4.temp = t;
+                    break;
+                case 5:
+                    t5.temp = t;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        void temp1(uint16_t t)
+        {
+            switch(this->PacketType)
+            {
+                case 4:
+                    t4.temp1 = t;
+                    break;
+                case 5:
+                    t5.temp1 = t;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        void temp2(uint16_t t)
+        {
+            if (this->PacketType == 4)
+            {
+                t4.temp2 = t;
+            }
+        }
+
+        void brightness(uint16_t b)
+        {
+            switch(this->PacketType)
+            {
+                case 0:
+                    t0.brightness = b;
+                    break;
+                case 5:
+                    t5.brightness = b;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        int8_t PacketType;
+        uint8_t PacketLen;
+        uint8_t is_temperature_sensor;
+        uint8_t is_humidity_sensor;
+
+        union
+        {
+            Payload t0;
+            PacketType4 t4;
+            PacketType5 t5;
+        };
+
+        uint8_t *pData;
+};
+
+
+sensors *Sensor=NULL;
+
+
+
 
 /*****************************************************************************/
 /***   Radio Driver Instance                                               ***/
@@ -115,11 +403,10 @@ RADIO radio;
 
 #define KEY     "TheQuickBrownFox"
 
-
 /*****************************************************************************/
 /***                            Serial Port                                ***/
 /*****************************************************************************/
-// SoftwareSerial is NOT by default compatible with PinchangeInterrupt! see http://beantalk.punchthrough.com/t/pinchangeinterrupt-with-softwareserial/4381/4
+// SoftwareSerial is NOT by default compatible with PinchangeInterrupt!
 // only Hardwareserial is supported. Baud rate must be 4800 because Avr runs on 1MHz only and RC-oscillator clock
 #define SERIAL_BAUD     4800
 HardwareSerial *mySerial = &Serial;
@@ -151,19 +438,11 @@ Calibration CalMode(Config, mySerial, &Mac, BUILD, (uint8_t*) KEY);
 /*****************************************************************************/
 uint16_t watchdog_counter;
 bool watchdog_expired = false;
+#include <LowPower.h>
 
-// USE_CRYSTAL is a command-line option, do not change here unless you compile from the command line
-#ifdef USE_CRYSTAL
-    #include "LowPower.h"
-    // interrupt on Timer 2 compare "A" completion
-    // requires a 32.768kHz Crystal
-    ISR(TIMER2_COMPA_vect){watchdog_counter++; }
-#else
-    #include <avr/sleep.h>
-    ISR(WDT_vect) {watchdog_counter++; }
-    #define watchdog_wakeup 9  // Wake up after 9 sec
-#endif
-
+ISR(TIMER2_COMPA_vect)
+{
+}
 
 /*****************************************************************************/
 /***                       Pin Change Interrupts                           ***/
@@ -177,17 +456,13 @@ void wakeUp1() { event_triggered |= 0x2; }
 void wakeUp2() { event_triggered |= 0x4; }
 void wakeUp3() { event_triggered |= 0x8; }
 
-
 /*****************************************************************************/
 /***                        AM312 PIR Parameters                           ***/
 /*****************************************************************************/
-#ifdef USE_PIR_ON_PCI1
 bool pir_dead_time_expired = false;
 bool pir_is_off = true;
-#define PIR_DEAD_TIME 3
-#define PIRVCCPIN 6
 // Data pin goes to Config.PCI1Pin
-#endif
+
 
 
 /*****************************************************************************/
@@ -202,40 +477,42 @@ SoftwareWire *i2c = NULL;
 // Internal pullup resistors are ~30kOHm. Since we are clocking slowly,
 // it works. However, they need to be disabled in sleep mode, because SoftwareWire
 // keeps them enabled even if i2c is ended with end()
-#define USE_I2C_PULLUPS  true // use this for HTU21D in case no Pullups are mounted.
-//#define USE_I2C_PULLUPS false // use this in case external Pullups are used.
+//#define USE_I2C_PULLUPS  true // use this for HTU21D in case no Pullups are mounted.
+#define USE_I2C_PULLUPS false // use this in case external Pullups are used.
 
 /**********      HTU21D       ******/
-#ifdef USE_HTU21D
-#include "HTU21D_SoftwareWire.h"
-HTU21D_SoftI2C *myHTU21D =NULL;
-Payload tinytx; // data structure for air interface
-#endif
 
-static void Start_HTU21D(void)
+#include <HTU21D_SoftwareWire.h>
+HTU21D_SoftI2C *myHTU21D =NULL;
+
+
+static void Start_HTU21D(bool enable)
 {
-    #ifdef USE_HTU21D
-    i2c->beginTransmission (HTDU21D_ADDRESS);
-    if (i2c->endTransmission() == 0)
+    if (enable)
     {
-        if (Config.SerialEnable) mySerial->println ("Found HTU21D");
-        myHTU21D = new HTU21D_SoftI2C(i2c);
-        delay(100);
-        myHTU21D->begin();
-        myHTU21D->setResolution(HTU21D_RES_RH10_TEMP13);
+        #if defined USE_HTU21D || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
+        i2c->beginTransmission (HTDU21D_ADDRESS);
+        if (i2c->endTransmission() == 0)
+        {
+            if (Config.SerialEnable) mySerial->print ("HTU21D ");
+            myHTU21D = new HTU21D_SoftI2C(i2c);
+            delay(100);
+            myHTU21D->begin();
+            myHTU21D->setResolution(HTU21D_RES_RH10_TEMP13);
+        }
+        else
+        {
+            if (Config.SerialEnable) mySerial->print ("not ");
+        }
+        mySerial->println ("found ");
+        #endif
     }
-    else
-    {
-        //blink(Config.LedPin, 3);
-        if (Config.SerialEnable) mySerial->println ("Could not find a  HTU21D");
-    }
-    #endif
 }
 
-#ifdef USE_HTU21D
-static void Measure_HTU21D(float* temperature)
-{
 
+static bool Measure_HTU21D(float &temperature, uint16_t &h, Configuration &Config)
+{
+    #if defined USE_HTU21D || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
     if (myHTU21D)
     {
         pinMode(Config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
@@ -243,40 +520,42 @@ static void Measure_HTU21D(float* temperature)
         i2c->begin();
         myHTU21D->begin();
         delay(50);
-        *temperature = myHTU21D->readTemperature();
-        tinytx.humidity = myHTU21D->readCompensatedHumidity(*temperature) * 2;
+        temperature = myHTU21D->readTemperature();
+        h = (uint16_t) floor(myHTU21D->readCompensatedHumidity(temperature) *2 +0.5);
+
         if (USE_I2C_PULLUPS)
         {
             pinMode(Config.SDAPin, INPUT);
             pinMode(Config.SCLPin, INPUT);
         }
         digitalWrite(Config.I2CPowerPin, LOW); // turn Sensor off
+        return true;
     }
-
+    #endif
+    return false;
 }
-#endif
+
 
 /**********     One-Wire and DS18B20     **********/
-#ifdef USE_DS18B20
+
 #include <DallasTemperature.h>       // GNU Lesser General Public License v2.1 or later
 #include <OneWire.h>                // license terms not clearly defined.
 
-#define ONE_WIRE_BUS Config.SDAPin
+//#define ONE_WIRE_BUS Config.SDAPin
+#define ONE_WIRE_BUS 6
 #define ONE_WIRE_POWER Config.I2CPowerPin
 
 OneWire *oneWire=NULL;
 DallasTemperature *ds18b20=NULL;
-#if (defined USE_HTU21D) || (defined USE_SHT3X) || (defined USE_BME280)
-    // packet type already defined.
-#else
-    PacketType4 tinytx;
-#endif
+
+
 static uint8_t start_ds18b20(DallasTemperature *sensor, byte PowerPin);
 
 
 // One-Wire DS18B20 start-up sequence
 static uint8_t start_ds18b20(DallasTemperature *sensor, byte PowerPin)
 {
+    #if defined USE_DS18B20 || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
     pinMode(PowerPin, OUTPUT); // set power pin for DS18B20 to output
     digitalWrite(PowerPin, HIGH); // turn DS18B20 sensor on
     delay(10); // Allow 10ms for the sensor to be ready
@@ -284,187 +563,190 @@ static uint8_t start_ds18b20(DallasTemperature *sensor, byte PowerPin)
     //sensor->setResolution(10); //Resolutiuon is 0.125 deg, absolutely sufficient!
     delay(10); // Allow 10ms for the sensor to be ready
     return sensor->getDeviceCount();
+    #else
+    return 0;
+    #endif
 }
 
 static void stop_ds18b20(byte PowerPin)
 {
     digitalWrite(PowerPin, LOW); // turn Sensor off to save power
 }
-#endif
 
-static void Start_DS18B20(void)
+
+
+
+static void Start_DS18B20(bool enable)
 {
-    #ifdef USE_DS18B20
-    //--------------------------------------------------------------------------
-    // test if 1-wire devices are present
-    //--------------------------------------------------------------------------
-    pinMode(ONE_WIRE_POWER, OUTPUT); // set power pin for DS18B20 to output
-    digitalWrite(ONE_WIRE_POWER, HIGH); // turn DS18B20 sensor on
-    delay(10); // Allow 10ms for the sensor to be ready
-    // Start up the library
-    oneWire= new OneWire(ONE_WIRE_BUS);
-    ds18b20 = new DallasTemperature(oneWire);
-
-    uint8_t num_devices = start_ds18b20(ds18b20, ONE_WIRE_POWER);
-    if (num_devices == 0)
+    #if defined USE_DS18B20 || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
+    if(enable)
     {
-        delete ds18b20;
-        ds18b20 = NULL;
-        stop_ds18b20(ONE_WIRE_POWER);
-        if (Config.SerialEnable) mySerial->print("no Dallas DS18B20 found\n\r");
+        //--------------------------------------------------------------------------
+        // test if 1-wire devices are present
+        //--------------------------------------------------------------------------
+        pinMode(ONE_WIRE_POWER, OUTPUT); // set power pin for DS18B20 to output
+        digitalWrite(ONE_WIRE_POWER, HIGH); // turn DS18B20 sensor on
+        delay(10); // Allow 10ms for the sensor to be ready
+        // Start up the library
+        oneWire= new OneWire(Config.OneWireDataPin);
+        ds18b20 = new DallasTemperature(oneWire);
 
-    }
-    else
-    {
-        if (Config.SerialEnable)
+        uint8_t num_devices = start_ds18b20(ds18b20, ONE_WIRE_POWER);
+        if (num_devices == 0)
         {
-            mySerial->print(num_devices, DEC);
-            mySerial->println(" DS18B20 devices found.");
-            mySerial->flush();
+            delete ds18b20;
+            ds18b20 = NULL;
+            stop_ds18b20(ONE_WIRE_POWER);
+            if (Config.SerialEnable) mySerial->print("no ");
+
         }
+        else
+        {
+            if (Config.SerialEnable)
+            {
+                mySerial->print(num_devices, DEC);
+
+            }
+        }
+        mySerial->println(" DS18B20 found.");
+        mySerial->flush();
     }
     #endif
 }
 
-#ifdef USE_DS18B20
-static void Measure_DS18B20(float*temperature)
+uint16_t encode_temp(float t_raw)
 {
-
-    if (ds18b20)
-        {
-            uint8_t num_devices = start_ds18b20(ds18b20, ONE_WIRE_POWER);
-            if (num_devices > 0)
-            {
-                ds18b20->requestTemperatures();
-                *temperature = ds18b20->getTempCByIndex(0);
-                mySerial->print("DS18B20 Temp: ");mySerial->print(*temperature); mySerial->println(" degC");
-                stop_ds18b20(ONE_WIRE_POWER); // Turn off power Pin for DS18B20
-            }
-            delay(65); // add delay to allow wdtimer to increase in case its erroneous
-        }
+    return floor(t_raw * 25 + 1000.5);
 }
 
-static void Measure_DS18B20(PacketType4 &tinytx, float *t)
+static void Measure_DS18B20(float *temp, uint16_t *temp1=NULL, uint16_t *temp2=NULL)
 {
+    #if defined USE_DS18B20 || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
+    float temperature=-40;
     if (ds18b20)
     {
-        float temperature;
         uint8_t num_devices = start_ds18b20(ds18b20, ONE_WIRE_POWER);
+        mySerial->print("Num DS18B20: "); mySerial->println(num_devices);
+
         if (num_devices > 0)
         {
             ds18b20->requestTemperatures();
             switch (num_devices)
             {
                 case 3:
-                    temperature = ds18b20->getTempCByIndex(2);
-                    tinytx.temp2 = floor(temperature * 25 + 1000.5);
-                    mySerial->print("Temp2: ");mySerial->print(temperature); mySerial->println(" degC");
+                    if (temp2 != NULL)
+                    {
+                        temperature = ds18b20->getTempCByIndex(2);
+                        //*temp2 = floor(temperature * 25 + 1000.5);
+                        *temp2 = encode_temp(temperature);
+                        mySerial->print("T2: ");mySerial->print(temperature); mySerial->println("º");
+                    }
                 case 2:
-                    temperature = ds18b20->getTempCByIndex(1);
-                    tinytx.temp1 = floor(temperature * 25 + 1000.5);
-                    mySerial->print("Temp1: ");mySerial->print(temperature); mySerial->println(" degC");
+                    if (temp1 != NULL)
+                    {
+                        temperature = ds18b20->getTempCByIndex(1);
+                        *temp1 = encode_temp(temperature);
+                        mySerial->print("T1: ");mySerial->print(temperature); mySerial->println("º");
+                    }
                 case 1:
-                    *t = ds18b20->getTempCByIndex(0);
-                    //tinytx.temp = floor(temperature * 25 + 1000.5);
-                    mySerial->print("Temp0: ");mySerial->print(*t); mySerial->println(" degC");
+                    *temp = ds18b20->getTempCByIndex(0);
+                    //*temp = floor(temperature * 25 + 1000.5);
+                    mySerial->print("T0: ");mySerial->print(*temp); mySerial->println("º");
                     break;
             }
 
-            //*temperature = ds18b20->getTempCByIndex(0);
-            //tinytx.temp = floor(*temperature * 25 + 1000.5);
-            //mySerial->print("Temp: ");mySerial->print(*temperature); mySerial->println(" degC");
-            //if (tinytx.count == 0) tinytx.humidity++;   // use humidity as a second counter byte, so we get a 16 bit counter
-
-            //for (uint8_t i =0; i< num_devices; i++)
-            //{
-            //     mySerial->print("Temp"); mySerial->print(i); mySerial->print(": "); mySerial->print(ds18b20->getTempCByIndex(i)); mySerial->println(" degC");
-            //}
             stop_ds18b20(ONE_WIRE_POWER); // Turn off power Pin for DS18B20
         }
         delay(65); // add delay to allow wdtimer to increase in case its erroneous
-
-
-    }
-}
-
-#endif
-
-/**********      BME280     **********/
-#ifdef USE_BME280
-#include <BME280_SoftwareWire.h>
-BME280_SoftwareWire *bme=NULL;
-PacketType3 tinytx; // special data type for air interface
-#endif
-
-static void Start_BME280(void)
-{
-    #ifdef USE_BME280
-    i2c->beginTransmission (0x76);
-
-    if (i2c->endTransmission() == 0)
-    {
-        if (Config.SerialEnable) mySerial->println ("Found BME280");
-        bme = new BME280_SoftwareWire(i2c);
-        //mySerial->println ("BME280 instance created.");
     }
     #endif
 }
 
-#ifdef USE_BME280
-static void Measure_BME280(float &temperature)
+
+
+/**********      BME280     **********/
+#include <BME280_SoftwareWire.h>
+BME280_SoftwareWire *bme=NULL;
+
+static void Start_BME280(bool enable)
 {
+    #if defined USE_BME280 || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
+    if (enable)
+    {
+        i2c->beginTransmission (0x76);
+
+        if (i2c->endTransmission() == 0)
+        {
+            bme = new BME280_SoftwareWire(i2c);
+            if (Config.SerialEnable) mySerial->println ("Found BME280");
+        }
+    }
+    #endif
+}
+
+
+static void Measure_BME280(float &temperature, uint16_t &humidity, uint32_t &pressure, byte I2CPowerPin)
+{
+    #if defined USE_BME280 || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
     if(bme)
         {
             float hum(NAN), pres(NAN);
             BME280b::TempUnit tempUnit(BME280b::TempUnit_Celcius);
             BME280b::PresUnit presUnit(BME280b::PresUnit_hPa);
 
-            pinMode(Config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
-            digitalWrite(Config.I2CPowerPin, HIGH);
+            pinMode(I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
+            digitalWrite(I2CPowerPin, HIGH);
             i2c->begin();
             delay(20);
             bme->begin();
             delay(125);
 
             bme->read(pres, temperature, hum, tempUnit, presUnit);
-            digitalWrite(Config.I2CPowerPin, LOW);
-            //tinytx.temp = (temperature * 25.0 + 1000.5);
-            tinytx.humidity = (hum*2);
-            tinytx.pressure = pres *100.0;
-            mySerial->print("Pressure: ");
-            mySerial->print(pres);
-            mySerial->print(" hPa, ");
-            mySerial->flush();
+            digitalWrite(I2CPowerPin, LOW);
 
-            digitalWrite(Config.I2CPowerPin, LOW);
+            humidity = floor(hum +0.5) * 2;
+            pressure = long(floor(pres*100));
+
+            if (Config.SerialEnable)
+            {
+                mySerial->print("Pressure: ");
+                mySerial->println(pressure);
+                mySerial->flush();
+            }
+            digitalWrite(I2CPowerPin, LOW);
         }
-}
-#endif
-
-/**********      SHT30, SHT31, SHT35     **********/
-#ifdef USE_SHT3X
-#include <SHT3x_sww.h>
-SHT3x *mySHT3x=NULL;
-Payload tinytx;
-#endif
-
-static void Start_SHT3X(void)
-{
-    #ifdef USE_SHT3X
-    i2c->beginTransmission (0x44);
-    if (i2c->endTransmission() == 0)
-    {
-        if (Config.SerialEnable) mySerial->println ("Found SHT3x");
-        mySHT3x = new SHT3x(i2c);
-        delay(50);
-        mySHT3x->Begin();
-    }
     #endif
 }
 
-#ifdef USE_SHT3X
-static void Measure_SHT3x(float *temperature)
+
+/**********      SHT30, SHT31, SHT35     **********/
+#if defined USE_SHT3X || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
+#include <SHT3x_sww.h>
+SHT3x *mySHT3x=NULL;
+
+#endif
+
+static void Start_SHT3X(bool enable)
 {
+    if (enable)
+    {
+        #if defined USE_SHT3X || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
+        i2c->beginTransmission (0x44);
+        if (i2c->endTransmission() == 0)
+        {
+            if (Config.SerialEnable) mySerial->println ("Found SHT3x");
+            mySHT3x = new SHT3x(i2c);
+            delay(50);
+            mySHT3x->Begin();
+        }
+        #endif
+    }
+}
+
+
+static void Measure_SHT3x(float &temperature, uint16_t &humidity)
+{
+    #if defined USE_SHT3X || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
     if (mySHT3x)
         {
             pinMode(Config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
@@ -473,16 +755,15 @@ static void Measure_SHT3x(float *temperature)
             //i2c->begin();
             mySHT3x->Begin();
             mySHT3x->GetData();
-            *temperature = mySHT3x->GetTemperature();
-            //tinytx.temp = (*temperature * 25.0 + 1000.5);
-            tinytx.humidity = (mySHT3x->GetRelHumidity()*2);
+            temperature = mySHT3x->GetTemperature();
+            humidity = (mySHT3x->GetRelHumidity()*2);
             digitalWrite(Config.I2CPowerPin, LOW); // turn Sensor off
         }
+    #endif
 }
-#endif
+
 
 /**********      MAX31865     **********/
-#ifdef USE_MAX31865
 #include "MAX31865.h"
 #include <SPI.h>
 #define PT100
@@ -495,30 +776,32 @@ static void Measure_SHT3x(float *temperature)
 #define FAULT_LOW_THRESHOLD   0x2690  /* -100C */
 
 MAX31865_RTD *rtd=NULL;
-#if not (IS_HUMIDITY_SENSOR) && (not defined USE_DS18B20)
-PacketType4 tinytx;
-#endif
 
 
-static void Start_MAX31865(void)
+
+static void Start_MAX31865(bool enable)
 {
-    pinMode(RTD_CS_PIN, INPUT_PULLUP);  // SPI SS (avoid becoming SPI Slave)
+    #if defined USE_MAX31865 || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
+    if (enable)
+    {
+        pinMode(RTD_CS_PIN, INPUT_PULLUP);  // SPI SS (avoid becoming SPI Slave)
 
-    Serial.println("starting MAX31865");Serial.flush();
+        if (Config.SerialEnable) mySerial->println("start MAX31865");
 
-    #ifdef PT1000
-    // For PT 1000 (Ref on breakout board = 3900 Ohms 0.1%)
-    rtd= new MAX31865_RTD( MAX31865_RTD::RTD_PT1000, RTD_CS_PIN, 3900 );
-    #endif
+        #ifdef PT1000
+        // For PT 1000 (Ref on breakout board = 3900 Ohms 0.1%)
+        rtd= new MAX31865_RTD( MAX31865_RTD::RTD_PT1000, RTD_CS_PIN, 3900 );
+        #endif
 
-    #ifdef PT100
-    // For PT 100  (Ref Ref on breakout board = 430 Ohms 0.1%)
-    rtd= new MAX31865_RTD( MAX31865_RTD::RTD_PT100, RTD_CS_PIN, 430 );
-    //Serial.println("created new instance of Max31865 class.");
+        #ifdef PT100
+        // For PT 100  (Ref Ref on breakout board = 430 Ohms 0.1%)
+        rtd= new MAX31865_RTD( MAX31865_RTD::RTD_PT100, RTD_CS_PIN, 430 );
+        #endif
+    }
     #endif
 }
 
-
+#if defined USE_MAX31865 || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
 static uint8_t Measure_MAX31865(float* pt100_temp)
 {
     uint8_t status = 0xFF;
@@ -548,13 +831,13 @@ static uint8_t Measure_MAX31865(float* pt100_temp)
             status = rtd->read_all();
             *pt100_temp = rtd->temperature();
 
-            Serial.print(F( "RTD:"));Serial.print( rtd->resistance());
-            Serial.print(F( " Ohms => Temp:"));
-            Serial.print( *pt100_temp,2); Serial.println(F(" C" ));
+            mySerial->print(F( "RTD:")); mySerial->print(rtd->resistance());
+            mySerial->print(F( " Ohm, Temp: "));
+            mySerial->print( *pt100_temp,2); mySerial->println("º");
         }
         else
         {
-            Serial.println("MAX31865 Failure.");
+            mySerial->println("MAX31865 Failure.");
         }
 
         digitalWrite(RTD_PWR_PIN, 0);
@@ -563,24 +846,42 @@ static uint8_t Measure_MAX31865(float* pt100_temp)
     return status;
 }
 
-
-
-#else
-    static void Start_MAX31865(void)
-    {
-    }
 #endif
+
+
+/*****************************************************************************/
+/***      Brightness  with LDR                                             ***/
+/*****************************************************************************/
+static uint16_t brightness_with_LDR(int8_t LDRPin) // must ba a analog Pin!
+{
+    uint16_t sensorValue=0;
+
+    if (LDRPin >= 0)
+    {
+        pinMode(LDRPin, INPUT_PULLUP);
+        delay(20);
+        sensorValue = (uint16_t)(1023 - analogRead(LDRPin));
+        pinMode(LDRPin, INPUT);
+    }
+    return sensorValue;
+}
+
+
 
 /*****************************************************************************/
 /****                         blink                                       ****/
 /*****************************************************************************/
 void activityLed (unsigned char state, unsigned int time = 0)
 {
-  if (Config.LedPin) {
+  if (Config.LedPin)
+  {
     pinMode(Config.LedPin, OUTPUT);
-    if (time == 0) {
+    if (time == 0)
+    {
       digitalWrite(Config.LedPin, state);
-    } else {
+    }
+    else
+    {
       digitalWrite(Config.LedPin, state);
       delay(time);
       digitalWrite(Config.LedPin, !state);
@@ -638,32 +939,67 @@ float getVcc(long vref)
 /*****************************************************************************/
 /***                        Power Save Functions                           ***/
 /*****************************************************************************/
-#ifdef USE_CRYSTAL
-
-static void setup_timer2()
+static bool setup_timer2(period_t st=SLEEP_8S);
+static bool setup_timer2(period_t st)
 {
+    unsigned long t = millis()+1200;
   // clock input to timer 2 from XTAL1/XTAL2
   ASSR = bit (AS2);
-  while (ASSR & 0x1f);
 
-  // set up timer 2 to count up to 256 * 1024  (32768) = 8s
+  // wait for ASSR with timeout = 1200ms
+  while ( (ASSR & 0x1f) && (millis() < t) );
+
+  if (ASSR & 0x1f) // still busy, probably no clock from XTAL1/XTAL2
+  {
+      return false;  // no crystal, cannot setup the timer
+  }
+
   TCCR2A = bit (WGM21);     //WGM20 and WGM22 in TCCR2B is set 0, Mode of operation: CTC
-  TCCR2B = bit (CS22) | bit (CS21) | bit (CS20);    // Prescaler of 1024
-  //TCCR2B = bit (CS21) | bit (CS20);    // Prescaler of 32
-  //TCCR2B = bit (CS20);    // Prescaler of 1
-  //TCCR2B &= 0xF8; // timer off, CS0=0, CS1=0, CS2=0
+  switch (st)
+  {
+    case SLEEP_FOREVER:
+        TCCR2B  &= 0xF8; // timer off, CS0=0, CS1=0, CS2=0
+        break;
+
+    case SLEEP_8S:
+        TCCR2B = bit (CS22) | bit (CS21) | bit (CS20);   //111b
+        break;
+
+    case SLEEP_2S:
+        TCCR2B = bit (CS22) | bit (CS21);   // 110b
+        break;
+
+    case SLEEP_1S:    // 128
+        TCCR2B = bit (CS22) | bit (CS20); //101b
+        break;
+
+    case SLEEP_500MS:// 64
+        TCCR2B = bit (CS22); //100b
+        break;
+
+    case SLEEP_250MS:// 32
+        TCCR2B = bit (CS21) | bit (CS20); //011b
+        break;
+    case SLEEP_60MS: // 8
+        TCCR2B = bit (CS21); //010b
+        break;
+
+    case SLEEP_15MS: // 1
+        TCCR2B = bit (CS21) | bit (CS20); //001b
+        break;
+  }
 
   while (ASSR & 0x08);   // wait until OCR2A can be updated
   OCR2A =  255;         // count to 255 (zero-relative)
-
-
   while (ASSR & 0x1f);   // update is busy
 
   // enable timer interrupts
   TIMSK2 |= bit (OCIE2A);
+  //mySerial->flush();
+
+  return true;
 }
 
-#else
 
 // Enable / Disable ADC, saves ~230uA
 static void enableADC(bool b)
@@ -678,82 +1014,9 @@ static void enableADC(bool b)
   }
 }
 
-// send Avr into Power Save Mode
-static void goToSleep()
-{
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN); // Set sleep mode.
-  sleep_enable(); // Enable sleep mode.
-  sleep_mode(); // Enter sleep mode.
-
-  // After waking from watchdog interrupt the code continues to execute from this point.
-
-  sleep_disable(); // Disable sleep mode after waking.
-  // Re-enable the peripherals.
-  //power_all_enable();
-}
-
-
-static void setup_watchdog(int timerPrescaler) {
-  if (timerPrescaler > 9 ) timerPrescaler = 9; //Correct incoming amount if need be
-  byte bb = timerPrescaler & 7;
-  if (timerPrescaler > 7) bb |= (1<<5); //Set the special 5th bit if necessary
-  //This order of commands is important and cannot be combined
-  MCUSR &= ~(1<<WDRF); //Clear the watchdog reset
-  WDTCSR |= (1<<WDCE) | (1<<WDE); //Set WD_change enable, set WD enable
-  WDTCSR = bb; //Set new watchdog timeout value
-  WDTCSR |= _BV(WDIE); //Set the interrupt enable, this will keep unit from resetting after each int
-}
-#endif
-
-
-
-
-static const char* show_trigger(byte trigger)
-{
-    const char* triggerstr="";
-    switch (trigger & 0x3)
-    {
-        case 0:
-            triggerstr = "LOW";
-            break;
-        case 1:
-            triggerstr = "CHANGE";
-            break;
-        case 2:
-            triggerstr = "FALLING";
-            break;
-        case 3:
-            triggerstr = "RISING";
-            break;
-        default:
-            break;
-    }
-
-    return triggerstr;
-}
-
-static const char* show_pinmode(byte pinmode)
-{
-    const char* pinmodestr;
-    switch (pinmode >> 2)
-    {
-        case 0:
-            pinmodestr = "INPUT";
-            break;
-        case 1:
-            pinmodestr = "OUTPUT";
-            break;
-        case 2:
-            pinmodestr = "INPUT_PULLUP";
-            break;
-        default:
-            pinmodestr = "UNKNOWN";
-    }
-
-    return pinmodestr;
-}
 /*****************************************************************************/
 // should go into configuration class
+/*
 static void print_eeprom(Stream *serial)
 {
     serial->print("Nodeid = ");        serial->print(Config.Nodeid);          serial->println();
@@ -795,10 +1058,12 @@ static void print_eeprom(Stream *serial)
     serial->print("PA Boost = ");      serial->print(Config.PaBoost);  serial->println();
     serial->print("Fdev (Steps) = ");      serial->print(Config.FedvSteps);  serial->println();
 }
+*/
+uint8_t tinytx_size;
 
-#if NO_TEMPERATURE_SENSOR
-    Payload tinytx;
-#endif
+
+#define SENDDELAY_M
+#define TEMP_DELTA_ALARM 10 // 1 degC
 
 
 // init Setup
@@ -823,6 +1088,7 @@ void setup()
     // output of filename without condition for debug purposes
     {
         mySerial->print(FILENAME); mySerial->print(" Build: "); mySerial->print(BUILD);mySerial->println();
+        //mySerial->print("OSCCAL: 0x"); mySerial->println(OSCCAL,HEX);
     }
 
     /***                     ***/
@@ -830,7 +1096,18 @@ void setup()
     /***                     ***/
     CalMode.configure();
 
-    //if (Config.SerialEnable) print_eeprom(mySerial);
+    //mySerial->print("Nodeid = "); mySerial->println(Config.Nodeid);
+    //if (Config.SerialEnable) print_eeprom(mySerial); // use this only for debug purposes!
+
+    //UseBits* u;
+    //u = (UseBits*)&Config.SensorConfig;
+    //Sensor = new sensors(*u);
+    Sensor = new sensors(*((UseBits*)&Config.SensorConfig));
+
+    // for debug purposes
+    mySerial->print("type: "); mySerial->println(Sensor->PacketType);
+    mySerial->print("leng: "); mySerial->println(Sensor->PacketLen);
+
 
     /*
     PCIOxTrigger bits 0 and 1:
@@ -866,11 +1143,12 @@ void setup()
         attachPinChangeInterrupt(digitalPinToPinChangeInterrupt(Config.PCI3Pin), wakeUp3, Config.PCI3Trigger&0x3);
     }
 
-    #ifndef USE_CRYSTAL
-        if (Config.SerialEnable) mySerial->println ("USING WDT");
-    #else
-        if (Config.SerialEnable) mySerial->println ("USING CRYSTAL TIMER");
-    #endif
+
+    if (Config.SerialEnable)
+    {
+        mySerial->print("USING ");
+        Config.UseCrystalRtc ? mySerial->println ("CRYSTAL TIMER") : mySerial->println ("WDT");
+    }
 
     pinMode(Config.I2CPowerPin, OUTPUT);  // set power pin for Sensor to output
     digitalWrite(Config.I2CPowerPin, HIGH);
@@ -880,11 +1158,11 @@ void setup()
     i2c->begin();
 
 
-    Start_HTU21D();
-    Start_BME280();
-    Start_SHT3X();
-    Start_DS18B20();
-    Start_MAX31865();
+    Start_HTU21D  (Sensor->use.HTU21D);
+    Start_BME280  (Sensor->use.BME280);
+    Start_SHT3X   (Sensor->use.SHT3X);
+    Start_DS18B20 (Sensor->use.DS18B20);
+    Start_MAX31865(Sensor->use.MAX31865);
 
 
     digitalWrite(Config.I2CPowerPin, LOW);
@@ -903,47 +1181,35 @@ void setup()
     //mySerial->print ("Radio chip ver: "); mySerial->print(version_raw>>4, HEX); mySerial->print (" Radio Metal Mask ver: "); mySerial->print(version_raw&0xf, HEX); mySerial->println();
     #endif
 
+    Sensor->nodeid(Config.Nodeid);
+    Sensor->targetid(Config.Gatewayid);
+    //Sensor->flags(1); // LSB means "heartbeat"
+    Sensor->humidity(0);
 
-    tinytx.targetid = Config.Gatewayid;
-    tinytx.nodeid =   Config.Nodeid;
-    tinytx.flags =    1; // LSB means "heartbeat"
-    #if (defined USE_HTU21D) || (defined USE_BME280) || (defined USE_SHT3X)
-    tinytx.humidity = 0;
-    #endif
+    if(!Config.UseCrystalRtc)
+        enableADC(false);           // power down/disable the ADC
+    else
+        setup_timer2();
 
-    #ifndef USE_CRYSTAL
-    if (Config.Senddelay != 0)
-    {
-        setup_watchdog(watchdog_wakeup);    // Wake up after 8 sec
-        PRR = bit(PRTIM1);                  // only keep timer 0 going
-    }
-    enableADC(false);           // power down/disable the ADC
-    #else
-    setup_timer2();
-    #endif
     analogReference(INTERNAL);  // Set the aref to the internal 1.1V reference
-    watchdog_counter = 500;     // set to have an initial transmission when starting the sender.
+    watchdog_counter = 6500;     // set to have an initial transmission when starting the sender.
 
 
-    #ifdef USE_PIR_ON_PCI1
-    pinMode(PIRVCCPIN,OUTPUT);
-    digitalWrite(PIRVCCPIN, HIGH);
-    pir_is_off = false;
 
-    // avoid triggering the PCINT when turning on power on PIR
-    #ifndef USE_CRYSTAL
-        setup_watchdog(5); // 0.5 s
-        goToSleep();
-        setup_watchdog(7); // 2s
-        goToSleep();
-        setup_watchdog(watchdog_wakeup);
-    #else
+    if (Config.PirPowerPin >=0)
+    {
+        pinMode(Config.PirPowerPin,OUTPUT);
+        digitalWrite(Config.PirPowerPin, HIGH);
+        pir_is_off = false;
+
+        // avoid triggering the PCINT when turning on power on PIR
         LowPower.powerDown(SLEEP_500MS , ADC_OFF, BOD_OFF);
         LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);
-    #endif
 
-    event_triggered &= 0xFD; //1111 1101 clear bit 1, this is PCI1 from PIR Sensor
-    #endif
+        event_triggered &= 0xFD; //1111 1101 clear bit 1, this is PCI1 from PIR Sensor
+    }
+
+    mySerial->flush();
 
     if (Config.LedPin)
     {
@@ -953,209 +1219,258 @@ void setup()
 
 void loop()
 {
-    #ifndef USE_CRYSTAL
-    goToSleep(); // goes to sleep for about 9 seconds and continues to execute code when it wakes up
-    #else
     static bool timer2_setup_done = false;
+
+    // go to sleep. When waking up, restart from here.
     if (Config.Senddelay != 0)
-        LowPower.powerSave(SLEEP_FOREVER, ADC_OFF, BOD_OFF, TIMER2_ON);
-    else
     {
-        timer2_setup_done = true;
+        if (Config.UseCrystalRtc)
+        {
+            LowPower.powerSave(SLEEP_FOREVER, ADC_OFF, BOD_OFF, TIMER2_ON); // wake up on timer2 counter overflow
+        }
+        else // use WDT
+        {
+            LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+        }
+    }
+    else // Senddelay is 0, external timer or no timer (like in a remote control)
+    {
+        if (Config.UseCrystalRtc)
+        {
+            timer2_setup_done = true;
+        }
         TCCR2B &= 0xF8; // timer 2 off, CS0=0, CS1=0, CS2=0
         LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
     }
-    #endif
 
-    #ifdef USE_PIR_ON_PCI1
-    pir_dead_time_expired = (watchdog_counter >= PIR_DEAD_TIME) && pir_is_off; // if true, turn on VCC of PIR and wait 2.5s
-    if (pir_dead_time_expired)
+
+    if (!event_triggered)
     {
-        pir_is_off = false;
-        digitalWrite(PIRVCCPIN, HIGH);
-        pir_dead_time_expired = false;
-        if (Config.SerialEnable) Serial.println("PIR active."); Serial.flush();
-
-        #ifndef USE_CRYSTAL
-        setup_watchdog(5);
-        goToSleep();
-        setup_watchdog(7);
-        goToSleep();
-        setup_watchdog(watchdog_wakeup);
-
-        #else
-        // when PIR ist switched ON, event triggers and we need to wait for 2.5s because data pin goes high for 2.5s
-        LowPower.powerDown(SLEEP_500MS , ADC_OFF, BOD_OFF);
-        LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);
-        #endif
-
-        event_triggered &= 0xFD; //1111 1101 clear bit 1, this is PCI1 from PIR Sensor
+        watchdog_counter++;
     }
-    #endif
+
+
+    // activate PIR after it has triggered some time ago (the dead time)
+    if (Config.PirPowerPin >=0)
+    {
+        pir_dead_time_expired = (watchdog_counter >= Config.PirDeadTime) && pir_is_off; // if true, turn on VCC of PIR and wait 2.5s
+        if (pir_dead_time_expired)
+        {
+            pir_is_off = false;
+            digitalWrite(Config.PirPowerPin, HIGH);
+            pir_dead_time_expired = false;
+            if (Config.SerialEnable) { Serial.println("PIR active."); Serial.flush(); }
+
+            // when PIR ist switched ON, event triggers and we need to wait for 2.5s because data pin goes high for 2.5s
+            LowPower.powerDown(SLEEP_500MS , ADC_OFF, BOD_OFF);
+            LowPower.powerDown(SLEEP_2S, ADC_OFF, BOD_OFF);
+
+            event_triggered &= 0xFD; //1111 1101 clear bit 1, this is PCI1 from PIR Sensor
+        }
+    }
 
     watchdog_expired = ((watchdog_counter >= Config.Senddelay) && (Config.Senddelay != 0)); // when Senddelay equals 0, sleeep forever and wake up only for events.
     if (watchdog_expired || event_triggered)
     {
-        #ifndef USE_CRYSTAL
-        enableADC(true); // power up/enable the ADC
-        #endif
-        tinytx.flags = 0;
+        uint8_t Flags = 0;
         float temperature=0;
+        uint16_t humidity =0;
+
+        if (!Config.UseCrystalRtc)
+        {
+            enableADC(true); // power up/enable the ADC
+        }
+
         if (watchdog_expired)
         {
-            tinytx.flags |= 0x1; // heartbeat flag
+            // reset the watchdog counter
             watchdog_counter = 0;
+
+            // there is a strange behaviour of the Atmega328, we need to redo the timer 2 setup once.
+            if (Config.UseCrystalRtc && !timer2_setup_done)
+            {
+                timer2_setup_done =true;
+                setup_timer2(); // this restarts the timer
+            }
+
+            // set the heartbeat flag when the watchdog counter is expired
+            Flags |= 0x01;
         }
-        tinytx.targetid = Config.Gatewayid;
+
+        Sensor->targetid(Config.Gatewayid);
+
         if(event_triggered)
         {
-            tinytx.flags |= (event_triggered << 1);
-
+            Flags |= (event_triggered << 1);
             //um Fernbedienungen mit mehreren Kanaelen herzustellen, muss der Node
-            //Pakete an verschiedene Nodeid's schicken koennen. Diese ID's koennten
-            //im EEPROM gespeichert sein. Um aber kompatibel mit TiNo 2.1.0 zu bleiben
-            //habe ich das mit einem Offset geloest der in den oberen 4 Bits des
-            //Trigger-Bytes liegt. Wenn also die GatewayID 22 ist und im
-            // PCIxTrigger z.B. 0b0111xxxx steht, ist die neue TargetID 22+7 = 29.
+            //Pakete an verschiedene Nodeid's schicken koennen.
             switch (event_triggered)
             {
                 case 0x01:
-                    tinytx.targetid += (Config.PCI0Trigger >> 4);
+                    Sensor->targetid(Config.PCI0Gatewayid);
                     break;
                 case 0x02:
-                    tinytx.targetid += (Config.PCI1Trigger >> 4);
+                    Sensor->targetid(Config.PCI1Gatewayid);
                     break;
                 case 0x04:
-                    tinytx.targetid += (Config.PCI2Trigger >> 4);
+                    Sensor->targetid(Config.PCI2Gatewayid);
                     break;
                 case 0x08:
-                    tinytx.targetid += (Config.PCI3Trigger >> 4);
+                    Sensor->targetid(Config.PCI3Gatewayid);
+                    break;
+                default:
+                    break;
+            }
+        }
+        Sensor->flags(Flags);
+
+        // PIR Sensor triggered: turn off Sensor for PIR_DEAD_TIME seconds
+        if (Config.PirPowerPin >=0)
+        {
+            if (event_triggered & 0x2)//PCI1
+            {
+                pir_is_off = true;
+                digitalWrite(Config.PirPowerPin, LOW);
+                watchdog_counter =0;
+                if (Config.SerialEnable)
+                {
+                    Serial.println("PIR triggered."); Serial.flush();
+                }
+                blink(Config.LedPin, 3);
+            }
+        }
+
+        long Vcal_x_ADCcal = (long)Config.AdcCalValue * Config.VccAtCalmV;
+        #ifdef USE_RADIO
+            Sensor->supplyV( Vcal_x_ADCcal / radio.vcc_dac );  // the VCC measured during last TX Burst.
+        #else
+            Sensor->supplyV( Vcal_x_ADCcal / readVcc() );
+        #endif
+
+        Sensor->increment_count();
+
+        if(Sensor->use.HTU21D)
+        {
+            Measure_HTU21D(temperature, humidity, Config);
+        }
+
+        if (Sensor->use.SHT3X)
+            Measure_SHT3x(temperature, humidity);
+
+        if(Sensor->use.BME280)
+        {
+            uint32_t p;
+            Measure_BME280(temperature, humidity, p, Config.I2CPowerPin);
+            Sensor->pressure(p);
+        }
+
+        if (Sensor->use.DS18B20)
+        {
+            switch (Sensor->PacketType)
+            {
+                case 5:
+                    {
+                        float t;
+                        Measure_DS18B20(&t);
+                        Sensor->temp1(encode_temp(t));
+                    }
+                    break;
+                case 4:
+                    {
+                        uint16_t t1,t2;
+                        Measure_DS18B20(&temperature, &t1, &t2);
+                        Sensor->temp1(t1);
+                        Sensor->temp2(t2);
+                    }
                     break;
                 default:
                     break;
             }
         }
 
-        // PIR Sensor triggered: turn off Sensor for PIR_DEAD_TIME seconds
-        #ifdef USE_PIR_ON_PCI1
-        if (event_triggered & 0x2)//PCI1
+
+        if (Sensor->use.MAX31865) // PT100 is not by default available in classic TiNo with Atmega328P
         {
-            pir_is_off = true;
-            digitalWrite(PIRVCCPIN, LOW);
-            watchdog_counter =0;
-            if (Config.SerialEnable)
+            #if defined USE_MAX31865 || defined __AVR_ATmega644P__ || defined (__AVR_ATmega1284P__)
+            float t=0;
+            uint8_t status = Measure_MAX31865(&t);
+            Sensor->temp1(encode_temp(t));
+            if(Config.SerialEnable)
             {
-                Serial.println("PIR triggered."); Serial.flush();
+                mySerial->print("RTD status: ");
+                mySerial->println(status);
             }
-            blink(Config.LedPin, 3);
-        }
-        #endif
-
-        long Vcal_x_ADCcal = (long)Config.AdcCalValue * Config.VccAtCalmV;
-        #ifdef USE_RADIO
-            tinytx.supplyV  = Vcal_x_ADCcal / radio.vcc_dac; // the VCC measured during last TX Burst.
-        #else
-            tinytx.supplyV  = Vcal_x_ADCcal / readVcc();
-        #endif
-
-        tinytx.count++;
-        #if defined USE_DS18B20 || ((defined USE_MAX31865) && (not IS_HUMIDITY_SENSOR))
-        if (tinytx.count == 0) tinytx.count_msb++;
-        #endif
-
-        #ifdef USE_HTU21D
-        Measure_HTU21D(&temperature);
-        #endif
-
-        #ifdef USE_SHT3X
-        Measure_SHT3x(&temperature);
-        #endif
-
-        #ifdef USE_BME280
-        Measure_BME280(temperature);
-        tinytx.flags |= 0x20; // mark as alternate protocol
-        #endif
-
-        #ifdef USE_DS18B20
-        #if (defined USE_HTU21D) || (defined USE_SHT3X) || (defined USE_BME280)
-            Measure_DS18B20(&temperature);
-        #else
-            Measure_DS18B20(tinytx, &temperature);
-        #endif
-        tinytx.flags |= 0x20; // mark as alternate protocol
-        #endif
-
-        #ifdef USE_MAX31865
-            uint8_t status = Measure_MAX31865(&temperature);
-            Serial.print("RTD status: "); Serial.println(status);
-            #if not (IS_HUMIDITY_SENSOR) && (not defined USE_DS18B20)
-                tinytx.flags |= 0x20; // mark as alternate protocol
             #endif
-        #endif
+        }
 
-        #if NO_TEMPERATURE_SENSOR
+        if(Sensor->use.BRIGHTNESS && Config.LdrPin >= 0)
+        {
+            uint16_t brightness = brightness_with_LDR(Config.LdrPin);
+            Sensor->brightness( brightness );
+            mySerial->print("LDR: ");
+            mySerial->println( brightness );
+        }
+
+        if (!Sensor->is_temperature_sensor)
+        {
+            mySerial->println("no temp sensor");
             #ifdef USE_RADIO
-                temperature = radio.readTemperature(0);
+                temperature = radio.readTemperature(0) + Config.radio_temp_offset/10.0;
             #else
                 temperature = 12.34;
             #endif
             if (Config.Senddelay != 0) delay(65); // add delay to allow wdtimer to increase in case its erroneous
+        }
 
-        #endif
-
-        tinytx.temp = floor (temperature * 25 + 1000.5);
-
+        Sensor->temp( encode_temp(temperature) );
+        Sensor->humidity(humidity);
 
         if (Config.SerialEnable)
         {
-            //mySerial->print("Sensor measurement: ");
-            #if IS_HUMIDITY_SENSOR
-            mySerial->print(tinytx.humidity/2.0);
-            mySerial->print(" %RH\t");
-            #endif
-            mySerial->print(tinytx.temp/25.0-40.0); mySerial->println(" degC");
+            if (Sensor->is_humidity_sensor)
+            {
+                mySerial->print(humidity/2.0);
+                mySerial->print(" %RH\t");
+            }
+
+            mySerial->print(temperature, 2); mySerial->println("º");
         }
-
-        #ifdef USE_CRYSTAL
-        // workaround for timer2 setup failure (registers read OK but timer runs fast)
-
-        if (watchdog_counter>0  && !timer2_setup_done)
-        {
-            setup_timer2(); // set it up again. Cures the problem.
-            watchdog_counter = 0;
-            timer2_setup_done =  true;
-        }
-        #endif
-
 
 
         bool ackreceived = false;
         #ifdef USE_RADIO
         temperature<0?  temperature-=0.5 : temperature+=0.5;
 
-        /****        uncomment if you want to use frequency correction                        ****/
-        //ackreceived = Mac.radio_send((uint8_t*) &tinytx, sizeof(tinytx), Config.RequestAck, int(temperature));
-
-        /****         use this line if you don't need frequency correction (default)          ****/
-        ackreceived = Mac.radio_send((uint8_t*) &tinytx, sizeof(tinytx), Config.RequestAck);
+        if(Config.UseRadioFrequencyCompensation)
+        {
+            ackreceived = Mac.radio_send(Sensor->pData, Sensor->PacketLen, Config.RequestAck, int(temperature));
+        }
+        else
+        {
+            ackreceived = Mac.radio_send(Sensor->pData, Sensor->PacketLen, Config.RequestAck);
+        }
 
         if (Config.RequestAck && Config.SerialEnable)
             (ackreceived) ? mySerial->println("Ack received.") : mySerial->println(" No Ack received.");
         #endif
 
-        #ifndef USE_CRYSTAL
-        enableADC(false); // power down/disable the ADC
-        #endif
+        //#ifndef USE_CRYSTAL
+        if (!Config.UseCrystalRtc)
+            enableADC(false); // power down/disable the ADC
+        //#endif
 
-        if (event_triggered)
+        event_triggered = 0;
+
+
+        if (ackreceived)
         {
-            event_triggered = 0;
-            if (ackreceived)
-                activityLed (1, 100);
+            activityLed (1, 100);
         }
-        else if (Config.LedPin && Config.LedCount >0)
+
+        if (Config.LedPin && Config.LedCount >0)
         {
-            Config.LedCount--;
+
+            if (Config.LedCount != 0xff) Config.LedCount--;
             blink(Config.LedPin, 2); // blink LED
         }
         if (Config.SerialEnable) mySerial->flush();
