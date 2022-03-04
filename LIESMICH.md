@@ -31,14 +31,23 @@ dadurch kostengünstig zu beschaffen.
 - Konzept der minimalen Kosten. Keine teuren Features die kaum einer braucht.
 - Bidirektionale sichere Funkverbindung. 
 
-
 # Features
 ## Allgemein
 - Spannung von ca. 1.8V bis 3.6V
 - Betrieb mit CR2032 Zelle bis zu 5 Jahren Lebensdauer
 - verschiedene Leiterplatten passend zum im Handel erhältlichen Gehäusen 
     
-    
+## Sensoren
+- HTU21D
+- SHT21, SHT20, SHT25
+- SHT30, SHT31, SHT35
+- BME280 Luftdruck Sensor
+- AM312 PIR Bewegungssensor
+- MAX31865 PT100 Temperatur Sensor
+- I2C Bus Basierte Sensoren leicht konfigurierbar
+- 4 digitale GPIOs
+- 2/4 analoge GPIO's (abhängig von der Board Version)
+
 ## Radio
 - RFM69CW, RFM69HCW, RFM95 Module
 - bidirektionale Kommunikation
@@ -55,27 +64,18 @@ dadurch kostengünstig zu beschaffen.
 - Interleaver
     
 ## Basisband
-- Atmel (Microchip) ATMega328p-au
-- 32kByte Flash
+- Atmel (Microchip) ATMega328p-au (32k)
+- alternativ ATMega644 oder ATMega1284 (mehr Flasch Speicher 64k oder 128k)
+- 32 / 64 / 128 kByte Flash
 - Ruhestrom < 2uA mit externem Quarz
+- Ruhestrom ca. 1uA mit TPL5110 (extern)
 - Ruhestrom ca. 4uA mit internem RC Oszillator
 - 1 MHz Takt Sender erlaubt Betriebsspannung bis 1.8V
 - 8 MHz Takt Empfänger
 - I2C für Sensoren
 - mindestens 4 weitere GPIO
     
-## Sensoren
-- HTU21D
-- SHT21, SHT20, SHT25
-- SHT30, SHT31, SHT35
-- BME280 Luftdruck Sensor
-- AM312 PIR Bewegungssensor
-- MAX31865 PT100 Temperatur Sensor
-- I2C Bus Basierte Sensoren leicht konfigurierbar
-- 4 digitale GPIOs
-- 2/4 analoge GPIO's (abhängig von der Board Version)
-- 
-    
+   
 ## System / Software
 - Open Source Software C++
 - Software kann einfach individuell angepasst werden
