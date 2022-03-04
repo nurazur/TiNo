@@ -247,9 +247,6 @@ In diesem Fall verbindet sich das Eepromer Tool mit dem TiNo Board auf COM8, 384
 4. `-x` verlässt den Kalibriermodus
 5. `-q` beendet das Tool
 
-Es gibt zwei Versionen, eine für Windows und eine für den Raspberry Pi.
-
-
 ### EEPROM Speicher erklärt:
 Diese Parameter sind derzeit im EEPROM gespeichert:
 
@@ -299,7 +296,7 @@ Neue Parameter ab Version 3:
 |:----|:----|:----|
 SENSORCONFIG|0-63|Bitfeld welches festlegt welche Sensoren von der Hardware unterstützt werden
 RADIO_T_OFFSET|-128 ... 127| Offset in Grad*10 um die genauigkeit des RFM Temperatur sensors zu kalibrieren
-USE_RADIO_T_COMP| 1 oder 2 | Temperaturabhängige Frequenzkorrektur aktivieren
+USE_RADIO_T_COMP| 0 oder 1 | Temperaturabhängige Frequenzkorrektur aktivieren
 LDRPIN|14,15,16,17| analoger GPIO Pin wo der LDR angeschlossen ist
 PIRPOWERPIN|0-21|GPIO wo der + Anschluss des PIR verbunden ist. Datenpin geht an PCI1PIN
 PIRDEADTIME|0-255|Zeit in der der PIR nach dem Auslösen nicht reagiert.

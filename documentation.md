@@ -111,19 +111,18 @@ In case all that don't tell you anything, then it is better to purchase ready fl
 `https://raw.githubusercontent.com/nurazur/TiNo/master/package_tino_index.json`
 - Navigate to `Tools->Board`: this opens a long list. at the top, click `Boards Manager...`
 - search for `Tiny Node AVR Boards` in the boards manager.
+- choose the latest release.
 - click `Install`.
 This installs all libraries required to operate the wireless protocol.
 
 
 ### Install additional required libraries  
-Additionally you need the following libraries:
-- *SoftwareWire*        (for I2C Bus Sensors) ATTENTION: Use Version **1.4.1**. Later versions are **not** compatible!
-- *HTU21D_SoftwareWire* (for the HTU21D sensor)
-- *SHT3x_SoftwareWire*  (for the SHT3x sensor)
-- *PinChangeInterrupt*  (Interrupts are supported by default in sensor sketches)
-- *Lowpower*            (in case an external clock crystal is used)
+The required sensor libraries are included in the TiNo release package. They can be found in the github repository as well.<br>
+Following libraries are required additionally:
+- *DallasTemperature*
+- *OneWire*
 
-<p align ='justify'>These libraries are currently not part of the TiNo software package. <em>HTU21D_SoftwareWire</em> and <em>SHT3x_SoftwareWire</em> are in the TiNo Github repository. They need to be manually installed by copying into the standard Arduino library directory. The idea behind is that the libraries are of general purpose and could be used for any other arduino project.</p>
+<p align ='justify'>These libraries are currently not part of the TiNo software package. They need to be manually installed by copying into the standard Arduino library directory. The idea behind is that the libraries are of general purpose and could be used for any other arduino project.</p>
 
 ## Compile and Flash Software
 [Burn Fuses, Flash Bootloader](#burn-fuses-flash-bootloader)<br>
@@ -188,44 +187,48 @@ Otherwise, if for example no answer is received, then TiNo sends the word "timeo
 TiNo enters calibration mode.
 
 
-The EEPROMer tool or TiNo calibration tool is called *tinocal_v009.py*. It runs with python 3 (tested with version 3.7) as well as with Python 2.7.
+The EEPROMer tool or TiNo calibration tool is called *tinocal_v0xx.py*. It runs with python 3 (tested with version 3.7) as well as with Python 2.7. It work under Linux as well as Windows OS.<br>
 There are several command line options. The 2 most important are the serial port spec and the Baud rate. The Baud rate for a sender is 4800 Bd, for a receiver it is 38400 Bd. Both the sensor and the receiver can be calibrated with the same tool.
 
 *Important notice:*
 
 > The Tool **tinocal** of version 1 works only on Python 2.7, it throws errors on Python 3.
-> The tinocal tools are different for version 1 and version 2 of TiNo software, they are <em>not</em> compatible with each other. Software of version 1 needs to be calibrated with tinocal version 1, software of version 2 needs to be calibrated with tinocal of version 2.
+> The tinocal tools are different for version 1, version 2 and version 3 of TiNo software, they are <em>not</em> compatible with each other. Software of version 1 needs to be calibrated with tinocal version 1, software of version 2 needs to be calibrated with tinocal.009.py of version 2, and software of version 3 needs to be calibrated with tinocal_v010.py of version 3.
 
 <p align ='justify'>When starting the tinocal tool, first the serial port is opened. In case a real FTDA adapter (with DTR line) is connected, this will reset the TiNo. If the DTR line isn't available on your serial adapter, the DTR pin on the TiNo board has to be put to GND manually for a short period. Tinocal then does nothing but listening for the string <em>'CAL?'</em> on the serial interface. As soon as it has received the trigger word, it sends an acknowledgement <em>'y'</em>. The TiNo board on the other side of the interface waits for the acknowledgement and enters calibration mode if it receives <em>'y'</em> within 250ms.</p>
 
-<p align ='justify>As soon as tinocal signals the calibration mode, the password must be entered. This password is the system password, identical to the <em>KEY</em> parameter in the source code of the sketches. This key also is used to encrypt the messages sent over the air. The EEPROM is encrypted because otherwise a thief could reconfigure a TiNo completely (and do unintentional actions with it) without knowing the encryption key used to transmit messages.</p>
+<p align ='justify'>As soon as tinocal signals the calibration mode, the password must be entered. This password is the system password, identical to the <em>KEY</em> parameter in the source code of the sketches. This key also is used to encrypt the messages sent over the air. The EEPROM is encrypted because otherwise a thief could reconfigure a TiNo completely (and do unintentional actions with it) without knowing the encryption key used to transmit messages.</p>
 
 #### Enter Password:
 - either: enter the password that is pre-configured in tinocal: `pwd<Enter>` This is just an abbreviation so you don't have to type the password again and again.
 - or: there is a command line option that uses the pre-configured password: `-pwd`
-- or:  type the password. (it has to be identical with the compiled password in the sketch): `pw,<password><Enter>`
+- or:  type the password. (it has to be identical with the compiled password in the sketch):<br> `pw,<password><Enter>`
 
 Now tinocal should display "Pass OK", and the actual configuration process can start.
 The following commands are supported:
 
 `help` lists all options.
 
-| Command  | Description  | Syntax |                                                             
+| Command  | Description  | Syntax |
 |---------|:--------------|:--------|
 |`exit` | terminate program
 |`help`  or `?` | print this help text
 |`c` | measure ADC and store in EEPROM.
-|`copy` or `cp` | copy file content to EEPROM. | `cp, <filename>`
+|`copy` or `cp` | copy file content to EEPROM. | `cp,<filename>`
 |`ri`| read 16 bit integer from EEPROM. | `ri(ead),<addr>`
 |`cs`| verify checksum.
-|`fe` | receive 10 packets from external source, calculate mean and store in EEPROM
+|`ft` | write temperature/frequency-correction data table to EEPROM.
 |`g` or `get` | store EEPROM content to file. | `g(et),<filename>`
-|`ls`| List EEPROM configuration data.
+|`ls` or `a`| List EEPROM configuration data.
 |`m` |          Measure VCC with calibrated values
 |`quit` or `q`| terminate program
 |`read`  or `r` | read from EEPROM. | `r(ead),<addr>`
 |`rf`| read float from EEPROM. | `ri(ead),<addr>`
 |`s` | request checksum update and store in EEPROM.
+|`t` | send a test RF packet |(ver. 3.x or later)
+|`to`| start sending radio OOK signal |(ver. 3.x or later)
+|`ts`| put radio into sleep mode |(ver. 3.x or later)
+|`tt`| read temperature from RFM69 device |(ver. 3.x or later)
 |`vddcal` | calibrate VCC measurement. | `v(ddcal),<VCC at device in mV>`
 |`write` or `w`|  write value to to EEPROM.  | `w(rite),<addr>,<value>`
 |`wf` | write float value to EEPROM. | `wf,<addr>,<value>`
@@ -259,8 +262,6 @@ In this example tinocal connects to a TiNo board with COM8, 38400 Bd and process
 4. `-x` leave calibration mode
 5. `-q` quit tinocal
 
-There are two versions of tinocal, one for Windows and another one for Linux based systems.
-
 ### EEPROM explained:
 Following parameters are defined in EEPROM:
 
@@ -291,7 +292,7 @@ Following parameters are defined in EEPROM:
 |PCI2TRIGGER|  0b0000xxxx|
 |PCI3PIN| 0 -21, 128 |
 |PCI3TRIGGER|  0b0000xxxx|
-|USE_CRYSTAL_RTC | auto | **do not edit!** written by the sketch.
+|USE_CRYSTAL_RTC | 0 or 1 | Version <=2: do not edit!<br>Version 3 and later: editable
 |ENCRYPTION_ENABLE | 0 or 1 | 1 = encrypt messages
 |FEC_ENABLE | 0 or 1 | 1 = use Forward Error Correction
 |INTERLEAVER_ENABLE | 0 or 1 | 1 = use interleaver
@@ -304,6 +305,18 @@ Following parameters are defined in EEPROM:
 |FDEV_STEPS | +/- | Frequency correction at room temperature (simple calibration of the 32 MHz crystal of the RFM)
 |CHECKSUM | auto | calculated at the end of calibration process and automatically updated (Option 's')
 
+Neue Parameter ab Version 3:
+
+| Parameter |  Value | Description |
+|:----|:----|:----|
+SENSORCONFIG|0 - 63|bit field configuring sensors supported by hardware
+RADIO_T_OFFSET|-128 ... 127| offset in degrees*10 to calibrate the RFM69 temperature sensor
+USE_RADIO_T_COMP| 1 or 0 | enable/disable temperature dependent frequency correction
+LDRPIN|14,15,16,17| analog GPIO Pin that is connected to a LDR.
+PIRPOWERPIN|0-21|GPIO connected to the + (Vdd) terminal of the PIR.  Data terminal needs to be connected to PCI1PIN.
+PIRDEADTIME|0-255|period during which the PIR does not respond after it has triggered.
+ONEWIREDATAPIN|0-21| Pin where the DS18B20 Data terminal is connected.
+PCIxGATEWAYID| 0-255 |target Node when a PCIx interrupt is triggered. x= 0 ... 3
 
 #### Notes:
 *) 210 is just to be compatible with the older RFM12B module. On RFM12B modules this value is fixed and cannot be changed.
