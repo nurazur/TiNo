@@ -438,7 +438,7 @@ Calibration CalMode(Config, mySerial, &Mac, BUILD, (uint8_t*) KEY);
 /*****************************************************************************/
 uint16_t watchdog_counter;
 bool watchdog_expired = false;
-#include <LowPower.h>
+#include "LowPower.h"
 
 ISR(TIMER2_COMPA_vect)
 {
@@ -482,7 +482,7 @@ SoftwareWire *i2c = NULL;
 
 /**********      HTU21D       ******/
 
-#include <HTU21D_SoftwareWire.h>
+#include "HTU21D_SoftwareWire.h"
 HTU21D_SoftI2C *myHTU21D =NULL;
 
 
@@ -987,6 +987,9 @@ static bool setup_timer2(period_t st)
     case SLEEP_15MS: // 1
         TCCR2B = bit (CS21) | bit (CS20); //001b
         break;
+
+    default:
+        break;
   }
 
   while (ASSR & 0x08);   // wait until OCR2A can be updated
@@ -1359,7 +1362,7 @@ void loop()
 
         if(Sensor->use.BME280)
         {
-            uint32_t p;
+            uint32_t p=0;
             Measure_BME280(temperature, humidity, p, Config.I2CPowerPin);
             Sensor->pressure(p);
         }
