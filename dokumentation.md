@@ -99,6 +99,7 @@ Die TiNo Boards sind so einfach wie möglich aufgebaut:
 `https://raw.githubusercontent.com/nurazur/TiNo/master/package_tino_index.json`
 - Navigiere zu `Tools->Board`: eine lange Spalte öffnet sich. Ganz oben auf `Boards Manager...` klicken
 - Im Boards Manager nach `Tiny Node AVR Boards` suchen.
+- die neueste Freigabe auswählen.
 - Auf `Install` klicken.
 Dies installiert die Bibliotheken die zum Betrieb des Funkprotokolls gebraucht werden.
 ### Empfänger (Gateway)
@@ -120,16 +121,12 @@ Alternativ kann man, wenn man ein Poweruser ist, das Tool *avrdude* einrichten u
 Der Sender oder besser "Node" (Knoten in einem Netzwerk) wird für ein Board mit 1 MHz Takt kompiliert. Die "Fuses" müssen dementsprechend programmiert werden. Der Vorgang ist mit dem beim Empfänger identisch.
 
 ### Weitere Bibliotheken Installieren
+Die notwendigen Bibliotheken für die Sensoren sind im TiNo Package enthalten. Sie stehen auch im Github Repository.
 Folgende Bibliotheken braucht man zusätzlich zur Installation des TiNo Boards:
-- *SoftwareWire*        (für I2C Bus Sensoren) ACHTUNG: Version 1.4.1 verwenden, neuere Versionen sind NICHT kompatibel.
-- *HTU21D_SoftwareWire* (für den HTU21D Sensor Sketch)
-- *SHT3x_SoftwareWire*  (für den SHT3x Sketch)
-- *PinChangeInterrupt*  (Interrupts werden standardmässig unterstützt)
-- *Lowpower*            (wenn man einen externen Uhrenquarz benutzt
 - *DallasTemperature*   (für den DS18B20 Sketch)
 - *OneWire*             (für den DS18B20 Sketch)
 
-Diese Bibliotheken sind nicht mit im TiNo Package enthalten (derzeit). *HTU21D_SoftwareWire* und *SHT3x_SoftwareWire* sind im TiNo Github Repository, müssen aber von Hand in das library Verzeichnis übertragen werden. Der Gedanke dahinter ist dass man die Bibliotheken ja auch für was anderes als TiNo verwenden kann.
+Diese Bibliotheken sind ab Version 3.0.3 mit im TiNo Package enthalten.
 
 ## Kompilieren und Flashen
 Dazu braucht man, zumindest kurzfristig, einen Programmer mit [ISP Adapter](https://www.arduino.cc/en/Tutorial/ArduinoISP).
@@ -176,10 +173,11 @@ Wenn die Prüfsumme nicht übereinstimmt:
 - Der TiNo geht direkt inden Kalibriermodus.
 
 Da serielle Ports von Computer zu Computer verschieden sind gibt es eine Kommandozeilenoption für den Port. Die Baudrate für den Sender TiNo ist 4800 Baud. Für ein Gateway braucht man moeglichst hohe Baudraten; im Moment ist sie auf 38400 Baud festgelegt. Für beide Konfigurationen kann das selbe Eepromer Tool verwendet werden.
+
 **Wichtige Hinweise:**
-Das EEPROMer Tool ist in Python 2.7 geschrieben aber geht jetzt auch mit Python 3.7.
+Das EEPROMer Tool ist geht mit Python 2.7 oder Python 3.x und wurde auf Linux (Debian) und Windows10 getetstet.
 Das EEPROMer Tool tinocal der Version 1 ist in Python 2.7 geschrieben aber läuft unter Python 3 nicht.
-Die Python Tools der Version 1 und Version 2 sind untereinander nicht kompatibel! Firmware der Version 1 muss man mit dem Tool der Version 1 abgleichen, Firmware der Version 2 und später mit dem tool tinocal_v009.py, welches auch Python 3 unterstützt.
+Die Python Tools der Versionen 1, Version 2 und Version 3 sind untereinander nicht kompatibel! Firmware der Version 1 muss man mit dem Tool der Version 1 abgleichen, Firmware der Version 2 und später mit dem tool tinocal_v009.py, Firmware der Version 3 mit tinocal_v010.py
 
 Wenn man das EEPROMer Tool startet, öffnet es zunächst den seriellen Port. An einem FTDI Adapter (mit herausgefuehrter DTR Leitung) bewirkt das, dass der angeschlossene TiNo neu startet. Wer keinen Adapter mit DTR Leitung zur Verfügung hat, muss zum Neustart des TiNo die DTR Leitung kurz auf Masse legen und wieder freigeben. Dann wartet das Tool auf das 'CAL?' vom TiNo, und sendet ggf. das 'y' sofort zurück um den Kalibriermodus zu erzwingen.
 Sobald das Tool meldet dass man im Kalibriermodus ist, muss man das Passwort eingeben. Dies ist mit dem *KEY* Parameter im Source Code identisch. Derselbe KEY wird auch zum Verschlüsseln des HF Pakets benutzt. Das EEPROM ist verschlüsselt, weil sonst ein Dieb einen TiNo ohne weiteres komplett umkonfigurieren könnte und damit wild in der Gegend herumfunken kann (oder noch Schlimmeres anrichten kann), ohne dass er das Passwort kennen müsste.
@@ -199,7 +197,7 @@ Folgende Syntax wird von dem Tool verstanden:
 |`c` | measure ADC and store in EEPROM.
 |`copy` or `cp` | copy file content to EEPROM. syntax: cp, <filename>
 |`cs`| verify checksum.
-|`fe` | receive 10 packets from external source, calculate mean and store in EEPROM
+|`ft` | write temperature / frequency-correction table to EEPROM
 |`g` or `get` | store eeprom content to file. Syntax: `g(et),<filename>`
 |`ls`| Liste die  EEPROM Konfigurationsdaten.
 |`m` | Measure VCC with calibrated values
@@ -210,6 +208,10 @@ Folgende Syntax wird von dem Tool verstanden:
 |`ri`| read 16 bit integer from EEPROM. Syntax: `ri(ead),<addr>`
 |`rf`| read float from EEPROM. Syntax: `ri(ead),<addr>`
 |`s` | request checksum update and store in EEPROM.
+|`t` | send a test RF packet
+|`to`| start sending radio OOK signal
+|`ts`| put radio into sleep mode
+|`tt`| read temperature from RFM69 device
 |`vddcal` | calibrate VCC measurement. Syntax: `v(ddcal),<VCC at device in mV>`
 |`write` or `w` |  write value to to EEPROM.  Syntax: `w(rite),<addr>,<value>`
 |`wf` | write float value to EEPROM. Syntax: `wf,<addr>,<value>`
@@ -235,7 +237,7 @@ Unterstützt werden zur Zeit folgende Optionen:
 
 eine Kommandozeile sieht dann beispielsweise so aus:
 
-`python eepromer_win_v007.py COM8 38400 -pwd -cp,receive_eeprom.cfg -ls -cs -x -q`
+`python tinocal_v010.py COM8 38400 -pwd -cp,receive_eeprom.cfg -ls -cs -x -q`
 
 In diesem Fall verbindet sich das Eepromer Tool mit dem TiNo Board auf COM8, 38400 Baud und arbeitet dann die Liste der Optionen in der Reihenfolge ab, also:
 1. `-pwd` sendet das im Programm hinterlegte Passwort an da TiNo Board
@@ -278,7 +280,7 @@ PCI2PIN | 0 -21, 128 |
 PCI2TRIGGER|  0b0000xxxx|
 PCI3PIN| 0 -21, 128 |
 PCI3TRIGGER|  0b0000xxxx|
-USE_CRYSTAL_RTC | auto | **nicht editieren!** wird vom Sketch eingetragen
+USE_CRYSTAL_RTC | 0 oder 1  | Version 2: nicht editieren! wird vom Sketch eingetragen. Ab Version 3:  editierbar
 ENCRYPTION_ENABLE | 0 oder 1 | legt fest ob das Telegramm verschlüsselt werden soll
 FEC_ENABLE | 0 oder 1 | legt fest ob Forward Error Correction eingesetzt werden soll
 INTERLEAVER_ENABLE | 0 oder 1 | legt fest ob ein Interleaver zum Einsatz kommt.
@@ -291,11 +293,24 @@ PABOOST | 0, 1, 2, 3| normalerweise 0. nur für RFM69HCW: legt die High-Power Pa
 FDEV_STEPS | +/- | Frequenzkorrektur bei Raumtemperatur (einfache Kalibrierung des 32 MHz Quarzes des RFM)
 CHECKSUM | auto | wird beim Konfigurieren berechnet und dann eingetragen (Option 's')
 
+Neue Parameter ab Version 3:
+
+| Parameter |  Wert | Beschreibung |
+|:----|:----|:----|
+SENSORCONFIG|0-63|Bitfeld welches festlegt welche Sensoren von der Hardware unterstützt werden
+RADIO_T_OFFSET|-128 ... 127| Offset in Grad*10 um die genauigkeit des RFM Temperatur sensors zu kalibrieren
+USE_RADIO_T_COMP| 1 oder 2 | Temperaturabhängige Frequenzkorrektur aktivieren
+LDRPIN|14,15,16,17| analoger GPIO Pin wo der LDR angeschlossen ist
+PIRPOWERPIN|0-21|GPIO wo der + Anschluss des PIR verbunden ist. Datenpin geht an PCI1PIN
+PIRDEADTIME|0-255|Zeit in der der PIR nach dem Auslösen nicht reagiert.
+ONEWIREDATAPIN|0-21| Pin wo der DS18B20 Data Pin angeschlossen ist.
+PCIxGATEWAYID| 0-255 |Ziel Node wenn ein PCIx Interrupt ausgeloest wurde. x= 0 ... 3
+
 *) 210 ist um mit dem RFM12B Modul kompatibel zu sein. Wert kann bei diesem Modul nicht geändert werden.
 
 **) Wird SENDELAY=0 gesetzt, wird der Timer deaktiviert und  der Sleep Modus des Prozessors aktiviert. Dieser wacht jetzt nur noch bei externen Interrupts ("PCI") auf.
 
-***) Da die LED eigentlich nicht gebraucht wird und nur zum Test einer einwandfreien Funktion dient, kann eingestellt werden ob die LED beim Versenden eines Telegramms aufleuchten soll. Eine Zahl > 0 stellt ein bei wie vielen Telegrammen nach dem Start die LED noch blinken soll. Normalerweise auf 1 gesetzt.
+***) Da die LED eigentlich nicht gebraucht wird und nur zum Test einer einwandfreien Funktion dient, kann eingestellt werden ob die LED beim Versenden eines Telegramms aufleuchten soll. Eine Zahl > 0 stellt ein bei wie vielen Telegrammen nach dem Start die LED noch blinken soll. Normalerweise auf 1 gesetzt. Wird LEDCOUNT=255 gesetzt, blinkt die LED immer wenn ein Paket gesendet wird.
 
 PCI Trigger Byte Bitbelegung:
 
@@ -361,7 +376,7 @@ Die Preise für Bauteile schwanken stark. Daher sind die angegebenen Preise nur 
 
 | Bauteil | Preis | Bemerkung |
 |---|---|----|
-ATMega328p-au | ca. 1.20 EUR |
+ATMega328p-au | ca. 1.20 EUR | März 2022: ca 7.00 EUR
 RFM69CW | ca. 1.50 EUR  |
 HTU21D Sensor | ca. 1.30 EUR | IC's im DFN-6 Gehäuse kosten fast das selbe (ausser im 50er Pack)
 Gehäuse | ca. 0.70  - 1.20 | je nach Typ
