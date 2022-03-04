@@ -38,7 +38,7 @@
 // the RF protocol is completely binary, see https://github.com/nurazur/tino
 
 
-#define SKETCHNAME "TiNo 3.0.1 receive.ino Ver 02/09/2021"
+#define SKETCHNAME "TiNo 3.0.1 receive.ino Ver 03/03/2022"
 #define BUILD 10
 
 
@@ -68,9 +68,7 @@
 #include <EEPROM.h>
 #include "calibrate.h"
 
-//#define KEY  "TheQuickBrownFox"
-#define KEY     "WiNW_AzurdelaMer"
-
+#define KEY  "TheQuickBrownFox"
 
 /*****************************************************************************/
 /***                            I2C Driver                                 ***/
@@ -705,7 +703,7 @@ void loop()
 
             }
             mySerial->print("&rssi=");    mySerial->print(int(Mac.rxpacket.RSSI*10));
-            //mySerial->print("&fo=");    mySerial->print(int16_t(Mac.rxpacket.FEI*radio.FSTEP), DEC); // need to multiply with the resolution of the PLL (in Hz), but I don't need fractions of a Hz
+            //mySerial->print("&fo=");    mySerial->print(int16_t(Mac.rxpacket.FEI*radio.FSTEP), DEC); // remove frequency offset, because its not valid in version 3.x
             if (config.FecEnable) { mySerial->print("&be=");  mySerial->print(Mac.rxpacket.numerrors); }
             mySerial->println("");
             Mac.rxpacket.payload[NODEID] =0;
